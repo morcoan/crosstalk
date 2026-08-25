@@ -91,12 +91,28 @@ function toRegistration(spec: ToolSpec): object {
 export function syncTools(desired: { spec: ToolSpec; owner: unknown }[]): void {
   const wanted = new Map(desired.map((d) => [d.spec.name, d]));
 
+  const replaced: AbortController[] = [];
+  const removed: AbortController[] = [];
   for (const [name, tool] of [...live]) {
     const want = wanted.get(name);
-    if (!want || want.owner !== tool.owner) {
-      tool.controller.abort();
+    if (!want) {
+      removed.push(tool.controller);
+      live.delete(name);
+    } else if (want.owner !== tool.owner) {
+      replaced.push(tool.controller);
       live.delete(name);
     }
+  }
+  // Same-name replacements (new mission, new module instance) must abort
+  // synchronously so the fresh registration below never collides with a live
+  // twin. Pure removals are deferred by a tick: a tool that solves a module
+  // (e.g. lock_regulator) unregisters itself from inside its own execute(), and
+  // aborting synchronously races the host's in-flight executeTool response —
+  // the agent would see an error even though the action succeeded. Solved
+  // modules answer gracefully during the 60 ms window.
+  replaced.forEach((c) => c.abort());
+  if (removed.length > 0) {
+    setTimeout(() => removed.forEach((c) => c.abort()), 60);
   }
 
   const mc = getModelContext();

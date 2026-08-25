@@ -110,6 +110,7 @@ if (canExecute) {
   await page.waitForSelector(".debrief-banner");
   check("mission disarmed via native executeTool loop", (await page.textContent(".debrief-banner")).trim() === "DEVICE DISARMED");
 
+  await page.waitForTimeout(300); // deferred abort tick
   const after = await page.evaluate(async () => (await document.modelContext.getTools()).map((t) => t.name));
   check("mission tools natively aborted after disarm", !after.includes("scan_data_tag"));
 

@@ -27,7 +27,9 @@ await page.addInitScript(() => {
     value: {
       async registerTool(tool, options) {
         tools.set(tool.name, tool);
-        options?.signal?.addEventListener("abort", () => tools.delete(tool.name));
+        options?.signal?.addEventListener("abort", () => {
+          if (tools.get(tool.name) === tool) tools.delete(tool.name);
+        });
       }
     }
   });

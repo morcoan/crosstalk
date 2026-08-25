@@ -38,7 +38,11 @@ await page.addInitScript(() => {
     value: {
       async registerTool(tool, options) {
         tools.set(tool.name, tool);
-        options?.signal?.addEventListener("abort", () => tools.delete(tool.name));
+        // Identity-safe like the native implementation: an aborted registration
+        // must not tear down a newer tool that reused the name.
+        options?.signal?.addEventListener("abort", () => {
+          if (tools.get(tool.name) === tool) tools.delete(tool.name);
+        });
       },
       async getTools() {
         return [...tools.values()];
@@ -213,6 +217,7 @@ async function playRegulator() {
   }
   const lock = await tool("lock_regulator");
   if (!lock.includes("LOCKED")) fails.push(`lock failed: ${lock}`);
+  await page.waitForTimeout(200); // deferred abort tick
 }
 
 async function armMission(id) {
@@ -251,6 +256,7 @@ check("start_mission refuses while device live", dupe.startsWith("TOOL ERROR"));
 await playWires();
 await page.waitForSelector(".debrief-banner");
 check("mission 1 disarmed", (await page.textContent(".debrief-banner")).trim() === "DEVICE DISARMED");
+await page.waitForTimeout(250); // deferred abort tick
 check("mission tools aborted after disarm", !(await toolNames()).includes("scan_data_tag"));
 
 /* Mission 2 — wires + keypad + regulator */
@@ -284,6 +290,7 @@ check("zero strikes across the entire run", (await strikes()) === 0);
 
 const finalState = await tool("get_device_state");
 check("get_device_state reports final disarm", finalState.includes("DISARMED"));
+await page.waitForTimeout(250); // deferred abort tick
 const finalTools = await toolNames();
 check("toolset back to base 4 after mission", finalTools.length === 4);
 
