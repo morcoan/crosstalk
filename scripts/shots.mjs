@@ -1,0 +1,92 @@
+/** Capture review screenshots of every screen. Run after `npm run build`. */
+import { chromium } from "playwright";
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { extname, join } from "node:path";
+
+const DIST = new URL("../dist/", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
+const server = createServer(async (req, res) => {
+  const path = req.url === "/" ? "/index.html" : (req.url ?? "/").split("?")[0];
+  try {
+    const data = await readFile(join(DIST, path));
+    res.writeHead(200, { "content-type": MIME[extname(path)] ?? "application/octet-stream" });
+    res.end(data);
+  } catch {
+    res.writeHead(404);
+    res.end();
+  }
+});
+await new Promise((r) => server.listen(4574, r));
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+await page.addInitScript(() => {
+  const tools = new Map();
+  Object.defineProperty(document, "modelContext", {
+    value: {
+      async registerTool(tool, options) {
+        tools.set(tool.name, tool);
+        options?.signal?.addEventListener("abort", () => tools.delete(tool.name));
+      }
+    }
+  });
+  window.__callTool = async (name, args = {}) => tools.get(name).execute(args);
+});
+
+await page.goto("http://localhost:4574/");
+await page.waitForSelector(".mission-card");
+await page.screenshot({ path: "scripts/shots/menu.png", fullPage: true });
+
+await page.click(".mission-card:nth-child(3)");
+await page.waitForSelector(".btn-arm");
+await page.screenshot({ path: "scripts/shots/briefing.png" });
+
+await page.click(".btn-arm");
+await page.waitForSelector(".module-grid");
+// let the signal module tick + cut a wrong-ish wire for drama? Just capture.
+await page.waitForTimeout(1200);
+await page.screenshot({ path: "scripts/shots/mission3.png", fullPage: true });
+
+// manual drawer
+await page.click('[data-role="btn-manual"]');
+await page.waitForSelector(".manual-text");
+await page.screenshot({ path: "scripts/shots/manual.png" });
+await page.click(".drawer-head button");
+
+// console drawer
+await page.click('[data-role="btn-console"]');
+await page.waitForSelector(".console-tool");
+await page.click(".console-tool:nth-child(4)");
+await page.screenshot({ path: "scripts/shots/console.png" });
+await page.click(".drawer-head button");
+
+// force a boom for the debrief-loss screen: 3 wrong echo presses via DOM
+// (echo has 4 buttons; pressing wrong resets — find correct is hard, so strike via wires instead)
+await page.evaluate(() => window.__callTool("get_device_state"));
+// cut three wires quickly (some may be right, whatever — we want debrief; if disarm happens fine too)
+for (let i = 0; i < 4; i++) {
+  const clicked = await page.evaluate(() => {
+    const wire = document.querySelector(".wire:not(.is-cut):not([disabled])");
+    if (!wire) return false;
+    wire.click();
+    return true;
+  });
+  if (!clicked) break;
+  await page.waitForTimeout(150);
+  await page.evaluate(() => {
+    for (const b of document.querySelectorAll(".btn-danger")) {
+      if (b.textContent.includes("CONFIRM CUT")) b.click();
+    }
+  });
+  await page.waitForTimeout(2200);
+  if (await page.locator(".debrief-banner").count()) break;
+}
+await page.waitForTimeout(2000);
+if (await page.locator(".debrief-banner").count()) {
+  await page.screenshot({ path: "scripts/shots/debrief.png", fullPage: true });
+}
+
+await browser.close();
+server.close();
+console.log("shots saved");
