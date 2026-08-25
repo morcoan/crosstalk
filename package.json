@@ -9,7 +9,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke": "node scripts/smoke.mjs",
+    "native": "node scripts/native.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

@@ -86,7 +86,7 @@ function renderMenu(root: HTMLElement): void {
 
   const foot = el("footer", "menu-foot");
   foot.innerHTML = `Built on <a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noreferrer">WebMCP</a>
-    · <a href="https://github.com/" data-role="repo" target="_blank" rel="noreferrer">Source</a>
+    · <a href="https://github.com/morcoan/crosstalk" target="_blank" rel="noreferrer">Source</a>
     · All modules run locally — no accounts, no servers.`;
   wrap.appendChild(foot);
 
