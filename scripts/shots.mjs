@@ -61,28 +61,22 @@ await page.click(".console-tool:nth-child(4)");
 await page.screenshot({ path: "scripts/shots/console.png" });
 await page.click(".drawer-head button");
 
-// force a boom for the debrief-loss screen: 3 wrong echo presses via DOM
-// (echo has 4 buttons; pressing wrong resets — find correct is hard, so strike via wires instead)
-await page.evaluate(() => window.__callTool("get_device_state"));
-// cut three wires quickly (some may be right, whatever — we want debrief; if disarm happens fine too)
-for (let i = 0; i < 4; i++) {
-  const clicked = await page.evaluate(() => {
-    const wire = document.querySelector(".wire:not(.is-cut):not([disabled])");
-    if (!wire) return false;
-    wire.click();
-    return true;
-  });
-  if (!clicked) break;
-  await page.waitForTimeout(150);
-  await page.evaluate(() => {
-    for (const b of document.querySelectorAll(".btn-danger")) {
-      if (b.textContent.includes("CONFIRM CUT")) b.click();
-    }
-  });
-  await page.waitForTimeout(2200);
-  if (await page.locator(".debrief-banner").count()) break;
+// Deterministic detonation: press a known-wrong glyph key three times.
+const manualText = await page.evaluate(() => window.__callTool("consult_manual", { section: "keypad" }));
+const columns = [...manualText.matchAll(/COLUMN \d+:\n([\s\S]*?)(?=\n\nCOLUMN|\n\nGLYPH)/g)].map((m) =>
+  m[1].trim().split("\n").map((line) => line.trim().split(/\s{2,}/)[1].split(" (")[0])
+);
+const shown = await page.$$eval(".key", (els) => els.map((e) => e.getAttribute("aria-label").match(/showing (.+) symbol/)[1]));
+const col = columns.find((c) => shown.every((n) => c.includes(n)));
+const order = col.filter((n) => shown.includes(n));
+const wrong = shown.find((n) => n !== order[0]);
+for (let i = 0; i < 3; i++) {
+  await page.locator(`.key[aria-label="key showing ${wrong} symbol"]`).click();
+  await page.waitForTimeout(350);
 }
-await page.waitForTimeout(2000);
+await page.waitForTimeout(600);
+await page.screenshot({ path: "scripts/shots/boom.png" });
+await page.waitForTimeout(1600);
 if (await page.locator(".debrief-banner").count()) {
   await page.screenshot({ path: "scripts/shots/debrief.png", fullPage: true });
 }
