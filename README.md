@@ -12,6 +12,7 @@
   <a href="#-development">Development</a>
 </p>
 <p align="center">
+  <a href="https://github.com/morcoan/crosstalk/actions/workflows/deploy.yml"><img alt="CI" src="https://github.com/morcoan/crosstalk/actions/workflows/deploy.yml/badge.svg"></a>
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="webmcp" src="https://img.shields.io/badge/WebMCP-imperative%20%2B%20declarative-ffb454">
   <img alt="deps" src="https://img.shields.io/badge/runtime%20deps-zero-blue">
@@ -27,7 +28,8 @@ exposed *only to your agent*, as live [WebMCP](https://webmachinelearning.github
 Neither of you can defuse the bomb alone. **The game is the conversation.**
 
 <p align="center">
-  <img src="docs/mission3.png" alt="Mission SILENT FREQUENCY — four modules, activity feed narrating agent tool calls" width="100%">
+  <img src="docs/demo.gif" alt="An agent playing CROSSTALK through native WebMCP tools — every call narrated in the activity feed" width="100%">
+  <br><sub>Recorded against Chromium's <b>native</b> WebMCP implementation — the agent starts the mission, scans the serial tag and reads the manual through <code>executeTool</code>; the human cuts the wire.</sub>
 </p>
 
 ## 🧨 Why this is a WebMCP game (and can't exist without it)
@@ -52,6 +54,10 @@ The human describes; the agent reasons and actuates; the human confirms and acts
 zero seconds — boom. That loop — **describe → look up → decide → confirm → act** — is exactly the
 cooperative, human-in-the-loop workflow the WebMCP explainer describes; CROSSTALK just makes it
 *fun enough to practice*.
+
+<p align="center">
+  <img src="docs/mission3.png" alt="Mission SILENT FREQUENCY — four modules, activity feed narrating agent tool calls" width="100%">
+</p>
 
 ## 🕹 How to play
 

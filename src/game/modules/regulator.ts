@@ -29,7 +29,8 @@ export class RegulatorModule implements GameModule {
     if (below >= 4) candidates.push(ctx.rng.int(4, below));
     if (above <= 96) candidates.push(ctx.rng.int(above, 96));
     this.value = ctx.rng.pick(candidates);
-    this.drift = ctx.rng.chance(0.5) ? 0.55 : -0.55;
+    // Slow creep: visible tension, but fair even at real chat latency (~10 units/min).
+    this.drift = ctx.rng.chance(0.5) ? 0.15 : -0.15;
   }
 
   agentSummary(): string {
@@ -111,7 +112,7 @@ export class RegulatorModule implements GameModule {
     this.driftTimer += dt;
     if (this.driftTimer >= 900) {
       this.driftTimer = 0;
-      if (this.ctx.rng.chance(0.25)) this.drift = -this.drift;
+      if (this.ctx.rng.chance(0.15)) this.drift = -this.drift;
       this.value = clamp(this.value + this.drift, 1, 99);
       this.ctx.update();
     }

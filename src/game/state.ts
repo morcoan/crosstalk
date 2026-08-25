@@ -24,7 +24,7 @@ export const MISSIONS: MissionDef[] = [
     id: "crossed-wires",
     codename: "CROSSED WIRES",
     tagline: "Field device · 3 modules",
-    seconds: 360,
+    seconds: 480,
     modules: ["wires", "keypad", "regulator"],
     brief:
       "Three modules. The REGULATOR flips the script: only your agent can move its dial, but only you " +
@@ -34,7 +34,7 @@ export const MISSIONS: MissionDef[] = [
     id: "silent-frequency",
     codename: "SILENT FREQUENCY",
     tagline: "Hostile device · 4 modules",
-    seconds: 480,
+    seconds: 600,
     modules: ["keypad", "echo", "signal", "wires"],
     brief:
       "Four modules, including an ECHO CORE that punishes forgetfulness and a SIGNAL TX that only you " +
