@@ -13,6 +13,7 @@
 </p>
 <p align="center">
   <a href="https://github.com/morcoan/crosstalk/actions/workflows/deploy.yml"><img alt="CI" src="https://github.com/morcoan/crosstalk/actions/workflows/deploy.yml/badge.svg"></a>
+  <a href="https://github.com/morcoan/crosstalk/actions/workflows/verify.yml"><img alt="verify" src="https://github.com/morcoan/crosstalk/actions/workflows/verify.yml/badge.svg"></a>
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
   <img alt="webmcp" src="https://img.shields.io/badge/WebMCP-imperative%20%2B%20declarative-ffb454">
   <img alt="deps" src="https://img.shields.io/badge/runtime%20deps-zero-blue">
@@ -161,6 +162,8 @@ Three layers of proof, all runnable from this repo:
    behind the Chrome flag) and verifies against the **native WebMCP implementation**: real
    `registerTool` schema validation, native `getTools()`/`executeTool()` driving a full mission win,
    `toolchange` events on module solves, and the declarative debrief form appearing as a native tool.
+
+Layers 1–3 run in CI on every push — that's the `verify` badge above.
 
 ```
 ok  mission 3 disarmed (all five module types solved)
