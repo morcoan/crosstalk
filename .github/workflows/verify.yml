@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # Daily during the judging window: verifies the LIVE site still registers and
+    # executes WebMCP tools natively. A failure emails the maintainer.
+    - cron: "17 14 * * *"
 
 permissions:
   contents: read
@@ -14,6 +18,7 @@ env:
 jobs:
   playthrough:
     name: co-op playthrough + native WebMCP
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,3 +36,18 @@ jobs:
       # (--enable-features=WebMCPTesting): registerTool schema validation,
       # native getTools/executeTool, toolchange, declarative form.
       - run: npm run native
+
+  live-check:
+    name: live site native WebMCP check
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium chromium-headless-shell
+      # Plays a mission on the DEPLOYED site through native executeTool and
+      # files the declarative field report — full production verification.
+      - run: node scripts/native-live.mjs

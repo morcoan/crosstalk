@@ -30,6 +30,20 @@ await page.locator(".wire").nth(cut).click();
 await page.locator(".btn-danger", { hasText: "CONFIRM CUT" }).click();
 await page.waitForSelector(".debrief-banner");
 check("LIVE mission disarmed via native executeTool", (await page.textContent(".debrief-banner")).trim() === "DEVICE DISARMED");
+
+// Declarative API on production: the debrief form must surface as a native tool
+// and be executable end-to-end (browser fills the form, toolautosubmit fires).
+await page.waitForTimeout(500);
+const debriefTools = await page.evaluate(async () => (await document.modelContext.getTools()).map((t) => t.name));
+check("LIVE declarative form registered natively", debriefTools.includes("file_field_report"));
+try {
+  await call("file_field_report", { callsign: "PREFLIGHT CREW", note: "Live declarative check." });
+  await page.waitForTimeout(400);
+  const log = await page.textContent(".squad-log");
+  check("LIVE declarative form filed (squad log updated)", log.includes("PREFLIGHT CREW"));
+} catch (e) {
+  check(`LIVE declarative form executable (${String(e).slice(0, 80)})`, false);
+}
 await browser.close();
 console.log(fails.length ? `\n${fails.length} FAILURES` : "\nLIVE NATIVE VERIFICATION PASSED");
 process.exit(fails.length ? 1 : 0);
