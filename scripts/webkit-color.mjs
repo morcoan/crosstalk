@@ -1,0 +1,14 @@
+import { webkit } from "playwright";
+const b = await webkit.launch();
+const p = await b.newPage({ viewport: { width: 1360, height: 950 } });
+await p.goto("https://morcoan.github.io/crosstalk/");
+await p.waitForSelector(".mission-card");
+await p.click(".mission-card:nth-child(1)");
+await p.waitForSelector(".btn-arm");
+await p.click(".btn-arm");
+await p.waitForSelector(".wire-bay");
+const labels = await p.$$eval(".wire", els => els.map(e => e.getAttribute("aria-label")));
+const bg = await p.$eval(".wire .wire-core", e => getComputedStyle(e).backgroundImage.slice(0, 60));
+console.log("wires:", labels.join(" | "));
+console.log("computed core bg:", bg);
+await b.close();
