@@ -23,8 +23,9 @@ split isn't a paper manual — it's the tool boundary itself?
 
 ### What it does
 
-CROSSTALK puts a bomb on your screen: a countdown, a strike counter, and up to four modules —
-colored wires, a glyph keypad, an analog voltage regulator, a memory core, a beeping transmitter.
+CROSSTALK puts a bomb on your screen: a countdown, a strike counter, and up to four modules drawn
+from five types — colored wires, a glyph keypad, an analog voltage regulator, a memory core, and a
+beeping transmitter.
 
 - **The human** sees and touches everything: paint colors, squiggly glyphs, gauge needles, display
   digits, audio beeps. Only the human can cut wires, press keys, and hit TRANSMIT.
@@ -89,10 +90,11 @@ feed. People learn tools through play; CROSSTALK is agent literacy with a countd
 
 ### Challenges
 
-- **Designing for the agent's blind spots.** Early playtests showed models guessing instead of
-  asking. The fix was sensory honesty in tool text: `get_device_state` explicitly marks every
-  channel as "NOT machine-readable — ask your partner," which reliably flips models from
-  hallucinating to collaborating.
+- **Designing for the agent's blind spots.** An agent's default failure mode is to guess instead
+  of ask. We designed against it with sensory honesty in the tool text itself: `get_device_state`
+  explicitly marks every channel as "NOT machine-readable — ask your partner," and every actuator
+  description says what the agent cannot sense — steering models toward collaborating instead of
+  hallucinating.
 - **Tool lifecycles.** WebMCP has no `unregisterTool` — we built the toolset as a reconciled,
   owner-diffed set of `AbortController`s so tools track game state without churn.
 - **Trust.** Humans get nervous when an invisible teammate has servos. The activity feed narrates
@@ -127,8 +129,9 @@ all created during the hackathon. No pre-existing code was extended.
    `chrome://flags/#enable-webmcp-testing` enabled.
 2. The menu shows **AGENT LINK ESTABLISHED** when WebMCP is detected. Click **COPY OPENER** and
    paste it to your agent — or just ask: *"check your tools and get the briefing."*
-3. Start with mission 1 (HANDSHAKE, one wire bay) — a clean 2-minute demo of the loop. Mission 3
-   (SILENT FREQUENCY) shows all five asymmetries including the audio module.
+3. Start with mission 1 (HANDSHAKE, one wire bay) — a clean 2-minute demo of the loop. Mission 2
+   (CROSSED WIRES) has the inverted-asymmetry regulator; mission 3 (SILENT FREQUENCY) is the full
+   four-module device including the audio transmitter.
 4. No agent? Click **TOOLS** (top right): every live WebMCP tool is listed and invokable in-page
    through the identical execute path. **MANUAL** opens the printed manual for solo play.
 5. Prompts that show the design fast: *“What can you sense on this device — and what do you need

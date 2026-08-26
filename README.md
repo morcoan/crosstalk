@@ -30,7 +30,7 @@ Neither of you can defuse the bomb alone. **The game is the conversation.**
 
 <p align="center">
   <img src="docs/demo.gif" alt="An agent playing CROSSTALK through native WebMCP tools — every call narrated in the activity feed" width="100%">
-  <br><sub>Recorded against Chromium's <b>native</b> WebMCP implementation — the agent starts the mission, scans the serial tag and reads the manual through <code>executeTool</code>; the human cuts the wire.</sub>
+  <br><sub>Recorded against Chromium's <b>native</b> WebMCP implementation — the agent starts the mission, scans the serial tag and reads the manual through <code>executeTool</code>; the human cuts the wire; the FIELD SKILLS debrief names what you practiced.</sub>
 </p>
 
 ## 🧨 Why this is a WebMCP game (and can't exist without it)
@@ -135,8 +135,8 @@ Implementation details that make the agent a *good teammate*:
 - **`annotations.readOnlyHint`** on every sensor/lookup; destructive acts (cutting, locking,
   transmitting) are either human-gated on screen or clearly warned in the description.
 - **Sensory honesty in text** — `get_device_state` marks every channel the agent *cannot* sense
-  (“colors are painted enamel — NOT machine-readable; ask your partner”), which reliably steers
-  models to ask instead of hallucinate.
+  (“colors are painted enamel — NOT machine-readable; ask your partner”), designed to steer
+  models toward asking instead of hallucinating.
 - **Instructive failures** — wrong inputs return guidance (“the dial refuses to seat at 3.6 MHz —
   that is not a detent…”), not stack traces.
 - **Visible agency** — every `execute()` is narrated in the on-screen ACTIVITY FEED, so the human
@@ -163,7 +163,9 @@ Three layers of proof, all runnable from this repo:
    `registerTool` schema validation, native `getTools()`/`executeTool()` driving a full mission win,
    `toolchange` events on module solves, and the declarative debrief form appearing as a native tool.
 
-Layers 1–3 run in CI on every push — that's the `verify` badge above.
+Layers 1–3 run in CI on every push — that's the `verify` badge above. A scheduled job re-verifies
+the **deployed site** daily, and [`scripts/native-live-deep.mjs`](scripts/native-live-deep.mjs)
+plays missions 2 and 3 to zero-strike disarms on the production origin through the native API.
 
 ```
 ok  mission 3 disarmed (all five module types solved)
