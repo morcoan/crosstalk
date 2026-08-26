@@ -30,3 +30,12 @@ renderScreen(screenHost);
 
 // Register WebMCP tools last so first paint is instant.
 installWebMcp();
+
+// For the humans who open DevTools:
+console.log(
+  "%c⧉ CROSSTALK %c— the toolset IS the game state.\n" +
+    "Try:  await document.modelContext.getTools()\n" +
+    "then watch it change as modules arm and disarm. Source: https://github.com/morcoan/crosstalk",
+  "color:#ffb454;font-weight:bold;font-size:14px",
+  "color:#7f8b97"
+);
