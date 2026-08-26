@@ -80,7 +80,8 @@ feed. People learn tools through play; CROSSTALK is agent literacy with a countd
   to zero-strike disarms using only tool text + DOM (it transcribes the beep pattern by watching the
   speaker LED); and a native run against Chromium's real WebMCP implementation
   (`--enable-features=WebMCPTesting`) proving registration, `executeTool`, `toolchange`, and the
-  declarative form all work on the actual API.
+  declarative form all work on the actual API. All of it runs in public CI on every push (the
+  “verify” badge), and the no-agent experience is verified on Chromium, Firefox and WebKit.
 
 ### Challenges
 
