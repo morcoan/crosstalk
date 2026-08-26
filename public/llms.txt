@@ -1,0 +1,20 @@
+# CROSSTALK
+
+> A cooperative bomb-defusal game for one human and one AI agent, built natively on WebMCP.
+> The human sees the device (wire colors, glyphs, gauges, beeps) and has the hands.
+> The agent holds the technical manual, the RFID scanner and the servo actuators —
+> exposed as WebMCP tools on document.modelContext. Neither player can win alone.
+
+## For agents visiting this page
+
+- Call `get_briefing` first: it explains your role, the etiquette, and the mission list.
+- `get_device_state` marks exactly what you can and cannot sense. Anything labeled
+  "NOT machine-readable" must be read aloud by your human partner — ask, don't guess.
+- Tools appear and vanish with game state (per-tool AbortSignals): sensors are annotated
+  read-only; cutting, locking and transmitting are irreversible, so confirm before acting.
+
+## Links
+
+- Play: https://morcoan.github.io/crosstalk/
+- Source (MIT): https://github.com/morcoan/crosstalk
+- WebMCP specification: https://webmachinelearning.github.io/webmcp/
