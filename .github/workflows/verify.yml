@@ -1,0 +1,33 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+jobs:
+  playthrough:
+    name: co-op playthrough + native WebMCP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium chromium-headless-shell
+      - run: npm test
+      - run: npm run build
+      # Full 3-mission, zero-strike co-op playthrough over a stubbed modelContext:
+      # the "agent" reads only tool text, the "human" reads only the DOM.
+      - run: npm run smoke
+      # Verification against Chromium's NATIVE WebMCP implementation
+      # (--enable-features=WebMCPTesting): registerTool schema validation,
+      # native getTools/executeTool, toolchange, declarative form.
+      - run: npm run native
