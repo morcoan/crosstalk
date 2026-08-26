@@ -76,7 +76,9 @@ await page.locator(".wire").nth(cut).click();
 await page.waitForTimeout(800);
 await page.locator(".btn-danger", { hasText: "CONFIRM CUT" }).click();
 await page.waitForSelector(".debrief-banner");
-await page.waitForTimeout(2200); // savor the win
+await page.waitForTimeout(1000); // banner + stats
+await page.evaluate(() => document.querySelector(".skills")?.scrollIntoView({ block: "center", behavior: "smooth" }));
+await page.waitForTimeout(1800); // FIELD SKILLS debrief — the impact thesis on screen
 
 const video = page.video();
 await context.close();
