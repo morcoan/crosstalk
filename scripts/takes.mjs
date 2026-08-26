@@ -98,8 +98,13 @@ await record("take1", async (page, call) => {
   await page.waitForTimeout(2_300);
   await page.locator(".btn-danger", { hasText: "CONFIRM CUT" }).click();
   await page.waitForSelector(".debrief-banner");
-  await page.waitForTimeout(2_500);
-  // n06: agent files the declarative field report
+  await page.waitForTimeout(1_800); // banner + stats + FIELD SKILLS panel beauty shot
+  // camera pans down: skills panel first, then the declarative field-report form
+  await page.evaluate(() => document.querySelector(".skills")?.scrollIntoView({ block: "start", behavior: "smooth" }));
+  await page.waitForTimeout(1_400);
+  await page.evaluate(() => document.querySelector(".report")?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  await page.waitForTimeout(800);
+  // n06: agent files the declarative field report (squad log updates on camera)
   let declarative = "executeTool";
   try {
     await call("file_field_report", { callsign: "WIRE WOLVES", note: "Clean cut. Zero strikes." });
@@ -109,7 +114,7 @@ await record("take1", async (page, call) => {
     await page.fill("#note", "Clean cut. Zero strikes.");
     await page.click(".report-form button[type=submit]");
   }
-  await page.waitForTimeout(7_000);
+  await page.waitForTimeout(6_500);
   return { declarative };
 });
 

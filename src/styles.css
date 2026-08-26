@@ -723,3 +723,5 @@ body.is-boom #app { animation: shake 0.75s linear; }
   .manual-text { color: #000; background: #fff; border: 0; font-size: 11px; }
   body { background: #fff; }
 }
+
+.linkcard-alt { border-top: 1px dashed var(--line); padding-top: 8px; font-size: 12px !important; }

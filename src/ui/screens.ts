@@ -41,7 +41,11 @@ function renderMenu(root: HTMLElement): void {
   link.innerHTML = linked
     ? `<div class="linkcard-head"><span class="led led-green"></span> AGENT LINK ESTABLISHED</div>
        <p>This browser exposes WebMCP — your agent can already see the game's tools.
-       Open your agent's chat and paste the opener:</p>`
+       Open your agent's chat and paste the opener:</p>
+       <p class="linkcard-alt">Flag enabled but no agent chat in this browser? <b>TOOLS</b> (top right)
+       drives every tool by hand, or use the
+       <a href="https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd"
+       target="_blank" rel="noreferrer">Model Context Tool Inspector</a> extension to chat with an agent.</p>`
     : `<div class="linkcard-head"><span class="led led-amber"></span> NO AGENT LINK DETECTED</div>
        <p>To play CO-OP, open this page in <b>ChatGPT's in-app browser</b> or <b>Chrome 149+</b> with
        <code>chrome://flags/#enable-webmcp-testing</code> enabled. Or play <b>SOLO</b> with the printed
