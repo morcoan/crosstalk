@@ -166,6 +166,13 @@ function renderDebrief(root: HTMLElement): void {
       <div class="stat"><span>${rating(d)}</span><label>rating</label></div>
     </div>`;
 
+  // FIELD SKILLS — the impact thesis, demonstrated: name what the player just practiced.
+  const skills = el("section", "skills");
+  skills.innerHTML = `<h3>FIELD SKILLS PRACTICED</h3>${skillLines(d, win)
+    .map((s) => `<div class="skill-row"><span class="skill-name">${s[0]}</span><span class="skill-note">${s[1]}</span></div>`)
+    .join("")}`;
+  wrap.appendChild(skills);
+
   // Declarative WebMCP tool: a plain HTML form annotated with toolname/tooldescription.
   // While this screen is mounted, agents see a `file_field_report` tool.
   const reportWrap = el("section", "report");
@@ -259,4 +266,40 @@ function renderDebrief(root: HTMLElement): void {
 function nextMission(id: string): (typeof MISSIONS)[number] | null {
   const i = MISSIONS.findIndex((m) => m.id === id);
   return i >= 0 && i + 1 < MISSIONS.length ? MISSIONS[i + 1] : null;
+}
+
+/**
+ * Derive "what you practiced" from the mission's activity feed — the game's
+ * impact thesis (agent literacy through play), demonstrated with real numbers.
+ */
+function skillLines(d: NonNullable<typeof game.device>, win: boolean): [string, string][] {
+  const feedTexts = game.feed.map((f) => f.text);
+  const agentCalls = feedTexts.filter((t) => t.startsWith("AGENT ⚙"));
+  const countCall = (name: string) => agentCalls.filter((t) => t.includes(name)).length;
+  const lookups =
+    countCall("consult_manual") + countCall("get_device_state") + countCall("scan_data_tag") +
+    countCall("get_briefing") + countCall("get_echo_log");
+  const actuations =
+    countCall("nudge_regulator") + countCall("lock_regulator") + countCall("set_transmitter_frequency");
+  const humanActs =
+    feedTexts.filter((t) => t.includes(") cut —")).length +
+    feedTexts.filter((t) => t.startsWith("Transmission on")).length;
+  const solved = d.modules.filter((m) => m.status === "solved").length;
+
+  if (d.toolCalls === 0) {
+    return [
+      ["SOLO RUN", "you played both halves with the printed manual — now try it with an agent on your side."],
+      ["MODULES CLEARED", `${solved}/${d.modules.length} solved by hand and eye alone.`]
+    ];
+  }
+  const lines: [string, string][] = [
+    ["DELEGATION", `your agent worked its side: ${d.toolCalls} tool call${d.toolCalls === 1 ? "" : "s"} — ${lookups} sensor/manual reads, ${actuations} servo actuation${actuations === 1 ? "" : "s"}.`],
+    ["PRECISE DESCRIPTION", `${solved}/${d.modules.length} modules cleared on channels only you could sense — paint, glyphs, needles, beeps.`],
+    ["HUMAN IN THE LOOP", humanActs > 0 ? `${humanActs} irreversible action${humanActs === 1 ? "" : "s"} went through your hands — the agent advised, you confirmed.` : "no irreversible actions taken — nothing to regret."],
+    ["TRUST CALIBRATION", d.strikes === 0 ? "zero strikes — you verified before acting, every time." : `${d.strikes} strike${d.strikes === 1 ? "" : "s"} — wrong guesses cost; verify before you act.`]
+  ];
+  if (win) {
+    lines.push(["THE LOOP", "describe → look up → decide → confirm → act. That's the skill of working with agents — you just drilled it."]);
+  }
+  return lines;
 }

@@ -585,6 +585,14 @@ body.is-boom #app { animation: shake 0.75s linear; }
 .stat span { font-size: 19px; color: #f2f7fc; letter-spacing: 1px; display: block; }
 .stat label { color: var(--dim); font-size: 11px; letter-spacing: 2px; }
 
+.skills { margin-top: 30px; text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; background: #10151bcc; }
+.skills h3 { margin: 0 0 10px; letter-spacing: 3px; font-size: 13px; color: var(--amber); }
+.skill-row { display: grid; grid-template-columns: 170px 1fr; gap: 10px; padding: 5px 0; border-bottom: 1px dashed #1f2831; font-size: 12.5px; }
+.skill-row:last-child { border-bottom: 0; }
+.skill-name { color: #8af0b8; letter-spacing: 1.5px; font-size: 11px; padding-top: 1px; }
+.skill-note { color: var(--dim); }
+@media (max-width: 620px) { .skill-row { grid-template-columns: 1fr; gap: 2px; } }
+
 .report { margin-top: 34px; text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: #10151bcc; }
 .report h3 { margin: 0 0 4px; letter-spacing: 3px; font-size: 13px; color: var(--amber); }
 .report-form { display: grid; gap: 8px; margin-top: 12px; max-width: 460px; }

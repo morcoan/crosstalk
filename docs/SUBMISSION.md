@@ -41,7 +41,11 @@ screaming in the background. Three strikes or zero seconds: boom.
 Three missions escalate from a 1-module trainer to a 4-module device. There's a printed-manual SOLO
 mode, an in-page WebMCP tool console (invoke everything an agent could, no agent required), a live
 activity feed that narrates every tool call your agent makes, synthesized audio, seeded devices for
-replayability, and a declarative-API field report form on the debrief screen.
+replayability, and a declarative-API field report form on the debrief screen. After every mission, a
+**FIELD SKILLS debrief** names what you just practiced with real numbers — delegation (your agent's
+tool calls), precise description (modules cleared on human-only channels), human-in-the-loop
+confirmation (irreversible actions that went through your hands), and trust calibration (strikes) —
+turning the game's impact thesis into something the player sees, every run.
 
 ### Why this use case is a strong fit for WebMCP
 
