@@ -176,7 +176,8 @@ await record("take3", async (page, call) => {
   await page.click(".btn-arm");
   await page.waitForSelector(".speaker-led");
   const armedAt = Date.now();
-  // sample the LED for ~5.6s (n11 narrates meanwhile)
+  // Sample the LED for ~8.2s while n11 narrates — pause-anchored transcription
+  // (find the inter-cycle silence, read the three runs after it).
   const samples = await page.evaluate(
     () =>
       new Promise((resolve) => {
@@ -185,7 +186,7 @@ await record("take3", async (page, call) => {
         const t0 = performance.now();
         const iv = setInterval(() => {
           out.push({ t: performance.now() - t0, on: led() });
-          if (performance.now() - t0 > 5600) {
+          if (performance.now() - t0 > 8200) {
             clearInterval(iv);
             resolve(out);
           }
@@ -201,17 +202,29 @@ await record("take3", async (page, call) => {
       start = null;
     }
   }
-  const words = runs.map((r) => (r.dur > 250 ? "long" : "short"));
-  const pattern = (words.length > 3 ? words.slice(1, 4) : words.slice(0, 3)).join(" ");
-  // keep watching the LED pulse while narration explains (rest of n11)
-  await page.waitForTimeout(3_500);
+  let pattern = null;
+  for (let i = 1; i + 2 < runs.length; i++) {
+    const gap = runs[i].at - (runs[i - 1].at + runs[i - 1].dur);
+    if (gap > 900) {
+      pattern = runs.slice(i, i + 3).map((r) => (r.dur > 250 ? "long" : "short")).join(" ");
+      break;
+    }
+  }
+  if (!pattern) {
+    const words = runs.map((r) => (r.dur > 250 ? "long" : "short"));
+    pattern = (words.length > 3 ? words.slice(1, 4) : words.slice(0, 3)).join(" ");
+  }
+  await page.waitForTimeout(900);
   const manualText = await call("consult_manual", { section: "signal" });
   const row = String(manualText).split("\n").find((l) => l.trim().startsWith(pattern));
   const mhz = Number(row.match(/([\d.]+) MHz/)[1]);
   await call("set_transmitter_frequency", { mhz });
   await page.waitForTimeout(1_800);
   await page.locator(".btn-transmit").click();
-  await page.waitForTimeout(1_700);
+  await page.waitForTimeout(400);
+  const txState = await page.locator(".btn-transmit").textContent();
+  if (!txState.includes("TRANSMITTED")) throw new Error(`take3 transmit failed (pattern "${pattern}")`);
+  await page.waitForTimeout(1_300);
   // n12: open the tool console — live toolset on camera
   await page.click('[data-role="btn-console"]');
   await page.waitForSelector(".console-tool");

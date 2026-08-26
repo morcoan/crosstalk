@@ -159,35 +159,52 @@ async function playEcho() {
   }
 }
 
-async function playSignal() {
-  // The "human" watches the speaker LED to transcribe the rhythm.
+/** Pause-anchored rhythm transcription: find the inter-cycle pause (>0.9s of
+ *  silence), then read the three runs that follow it. Immune to sampling phase. */
+function derivePattern(runs) {
+  for (let i = 1; i + 2 < runs.length; i++) {
+    const gap = runs[i].at - (runs[i - 1].at + runs[i - 1].dur);
+    if (gap > 900) {
+      return runs.slice(i, i + 3).map((r) => (r.dur > 250 ? "long" : "short")).join(" ");
+    }
+  }
+  const words = runs.map((r) => (r.dur > 250 ? "long" : "short"));
+  return (words.length > 3 ? words.slice(1, 4) : words.slice(0, 3)).join(" ");
+}
+
+async function sampleSpeakerLed(windowMs) {
   const samples = await page.evaluate(
-    () =>
+    (win) =>
       new Promise((resolve) => {
         const out = [];
         const led = () => document.querySelector(".speaker-led")?.classList.contains("is-on") ?? false;
         const t0 = performance.now();
         const iv = setInterval(() => {
           out.push({ t: performance.now() - t0, on: led() });
-          if (performance.now() - t0 > 5600) {
+          if (performance.now() - t0 > win) {
             clearInterval(iv);
             resolve(out);
           }
         }, 16);
-      })
+      }),
+    windowMs
   );
   const runs = [];
   let start = null;
   for (const s of samples) {
     if (s.on && start === null) start = s.t;
     if (!s.on && start !== null) {
-      runs.push(s.t - start);
+      runs.push({ at: start, dur: s.t - start });
       start = null;
     }
   }
-  const words = runs.map((d) => (d > 250 ? "long" : "short"));
-  // find 3 consecutive beeps belonging to one cycle (first run may be clipped — drop it if we have >3)
-  const pattern = (words.length > 3 ? words.slice(1, 4) : words).join(" ");
+  return runs;
+}
+
+async function playSignal() {
+  // The "human" watches the speaker LED to transcribe the rhythm.
+  const runs = await sampleSpeakerLed(8200);
+  const pattern = derivePattern(runs);
   const manualText = await tool("consult_manual", { section: "signal" });
   const row = manualText.split("\n").find((l) => l.trim().startsWith(pattern));
   const mhz = Number(row.match(/([\d.]+) MHz/)[1]);
@@ -195,7 +212,9 @@ async function playSignal() {
   const seat = await tool("set_transmitter_frequency", { mhz });
   if (!seat.includes("seated")) fails.push(`seat failed: ${seat}`);
   await page.locator(".btn-transmit").click();
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(250);
+  const feedTxt = await page.$$eval(".feed-row", (rows) => rows.map((r) => r.textContent).join("\n"));
+  if (!feedTxt.includes("SIGNAL TX disarmed")) fails.push(`transmit did not disarm (pattern "${pattern}")`);
 }
 
 async function playRegulator() {

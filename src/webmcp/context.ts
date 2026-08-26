@@ -53,13 +53,25 @@ function preview(text: string, max = 110): string {
   return flat.length > max ? `${flat.slice(0, max)}…` : flat;
 }
 
+/** Compact live-state suffix appended to actuator results so the agent keeps
+ *  situational awareness without extra get_device_state round-trips. */
+function statusSuffix(): string {
+  const d = game.device;
+  if (!d || d.result !== null || !d.revealed) return "";
+  const total = Math.max(0, Math.ceil(d.msLeft / 1000));
+  const clock = `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  const armed = d.modules.filter((m) => m.status === "armed").length;
+  return `\n[DEVICE: ${clock} left · strikes ${d.strikes}/3 · ${armed} module(s) still armed]`;
+}
+
 /** Shared execution path for real agents AND the in-page Tool Console. */
 export async function runTool(spec: ToolSpec, input: Record<string, unknown>): Promise<string> {
   if (game.device && game.device.result === null) game.device.toolCalls++;
   const args = summarizeArgs(input);
   feed(`AGENT ⚙ ${spec.name}${args ? ` (${args})` : ""}`, "tool");
   try {
-    const out = await spec.execute(input ?? {});
+    let out = await spec.execute(input ?? {});
+    if (!spec.readOnly) out += statusSuffix();
     feed(`↳ ${preview(out)}`, "info");
     emit("state");
     return out;
