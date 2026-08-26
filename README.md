@@ -75,6 +75,12 @@ cooperative, human-in-the-loop workflow the WebMCP explainer describes; CROSSTAL
 **No agent handy?** Open **TOOLS** — an in-page console that lists every live WebMCP tool and lets
 you invoke the *identical* `execute()` an agent would call, with the same activity-feed narration.
 
+**Prompts worth trying with your agent:**
+- *“What can you sense on this device — and what do you need me for?”* (watch it map the asymmetry)
+- *“Start mission 2 and walk me through it. Never guess.”*
+- *“The needle is at 34, green zone is 61–69 — get us there and lock it.”*
+- After a win: *“File our field report — callsign WIRE WOLVES.”* (that's the declarative form)
+
 <p align="center">
   <img src="docs/console.png" alt="The in-page WebMCP tool console" width="70%">
 </p>

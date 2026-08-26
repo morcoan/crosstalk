@@ -109,6 +109,13 @@ GitHub Pages.
 - Live: https://morcoan.github.io/crosstalk/
 - Repo: https://github.com/morcoan/crosstalk
 
+## New vs. pre-existing work
+
+CROSSTALK is a **new project, built entirely within the submission period** (first commit
+August 25, 2026, after the window opened). The full, timestamped commit history is public in the
+repository — game engine, all five modules, the WebMCP layer, tests, docs and video tooling were
+all created during the hackathon. No pre-existing code was extended.
+
 ## Testing notes for judges
 
 1. Open the live URL in ChatGPT's in-app browser, or Chrome 149+ with
@@ -119,3 +126,6 @@ GitHub Pages.
    (SILENT FREQUENCY) shows all five asymmetries including the audio module.
 4. No agent? Click **TOOLS** (top right): every live WebMCP tool is listed and invokable in-page
    through the identical execute path. **MANUAL** opens the printed manual for solo play.
+5. Prompts that show the design fast: *“What can you sense on this device — and what do you need
+   me for?”* · *“Start mission 2 and walk me through it, never guess.”* · after a win: *“File our
+   field report — callsign WIRE WOLVES”* (exercises the declarative form tool).
