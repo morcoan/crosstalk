@@ -1,4 +1,4 @@
-import { el, esc, copyText } from "../lib/dom";
+import { el, esc, copyText, store } from "../lib/dom";
 import { armDevice, backToMenu, bestFor, fmtClock, game, goToBriefing, MISSIONS, rating } from "../game/state";
 import { webmcpAvailable } from "../webmcp/context";
 import { renderDevice } from "./device";
@@ -146,7 +146,7 @@ interface FieldReport {
 
 function loadReports(): FieldReport[] {
   try {
-    return JSON.parse(localStorage.getItem("crosstalk.reports") ?? "[]") as FieldReport[];
+    return JSON.parse(store.get("crosstalk.reports") ?? "[]") as FieldReport[];
   } catch {
     return [];
   }
@@ -194,7 +194,7 @@ function renderDebrief(root: HTMLElement): void {
   form.innerHTML = `
     <label for="callsign">TEAM CALLSIGN</label>
     <input id="callsign" name="callsign" maxlength="24" required
-      value="${esc(localStorage.getItem("crosstalk.callsign") ?? "")}"
+      value="${esc(store.get("crosstalk.callsign") ?? "")}"
       toolparamdescription="Short team callsign, e.g. WIRE WOLVES">
     <label for="note">AFTER-ACTION NOTE</label>
     <input id="note" name="note" maxlength="140"
@@ -214,8 +214,8 @@ function renderDebrief(root: HTMLElement): void {
       when: Date.now()
     };
     const all = [report, ...loadReports()].slice(0, 12);
-    localStorage.setItem("crosstalk.reports", JSON.stringify(all));
-    localStorage.setItem("crosstalk.callsign", callsign);
+    store.set("crosstalk.reports", JSON.stringify(all));
+    store.set("crosstalk.callsign", callsign);
     paintLog();
     const ev = e as SubmitEvent & { agentInvoked?: boolean; respondWith?(p: Promise<unknown>): void };
     if (ev.agentInvoked && typeof ev.respondWith === "function") {

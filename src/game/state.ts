@@ -1,4 +1,5 @@
 import { emit } from "../lib/bus";
+import { store } from "../lib/dom";
 import { sfx } from "../lib/audio";
 import { makeRng, randomSeed, type Rng } from "../lib/rng";
 import type { FeedEntry, FeedTone, GameModule, MissionDef, MissionResult, ModuleCtx, Screen } from "./types";
@@ -279,7 +280,7 @@ export interface BestRecord {
 
 export function bestFor(missionId: string): BestRecord | null {
   try {
-    const raw = localStorage.getItem(`crosstalk.best.${missionId}`);
+    const raw = store.get(`crosstalk.best.${missionId}`);
     return raw ? (JSON.parse(raw) as BestRecord) : null;
   } catch {
     return null;
@@ -289,7 +290,7 @@ export function bestFor(missionId: string): BestRecord | null {
 function saveBest(d: DeviceState): void {
   const prev = bestFor(d.mission.id);
   if (!prev || d.msLeft > prev.msLeft) {
-    localStorage.setItem(
+    store.set(
       `crosstalk.best.${d.mission.id}`,
       JSON.stringify({ msLeft: d.msLeft, strikes: d.strikes, when: Date.now() } satisfies BestRecord)
     );
