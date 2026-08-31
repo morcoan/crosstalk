@@ -40,7 +40,7 @@ async function boot(viewport, reducedMotion = "no-preference") {
 }
 
 async function overflow(page) {
-  return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  return page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
 }
 
 async function smallestVisibleTarget(page, selector) {
