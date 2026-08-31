@@ -1,7 +1,7 @@
 {
   "name": "crosstalk",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "description": "A cooperative defusal game for one human and one AI agent, built on WebMCP.",
   "license": "MIT",
@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
-    "native": "node scripts/native.mjs"
+    "native": "node scripts/native.mjs",
+    "ux": "node scripts/ux.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

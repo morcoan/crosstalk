@@ -61,7 +61,32 @@ export const sfx = {
     tone(880, long ? 0.4 : 0.12, "sine", 0.12);
   },
   click(): void {
-    tone(1400, 0.03, "square", 0.05);
+    tone(760, 0.035, "square", 0.035);
+    tone(160, 0.045, "triangle", 0.025, 0.01);
+  },
+  arm(): void {
+    tone(140, 0.12, "square", 0.08);
+    tone(520, 0.08, "triangle", 0.06, 0.1);
+  },
+  radio(): void {
+    tone(1180, 0.025, "square", 0.025);
+    tone(860, 0.035, "square", 0.018, 0.04);
+  },
+  servo(): void {
+    const a = ac();
+    if (!a) return;
+    const t0 = a.currentTime;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(95, t0);
+    osc.frequency.exponentialRampToValueAtTime(210, t0 + 0.14);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.035, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+    osc.connect(g).connect(a.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.18);
   },
   timerTick(): void {
     tone(1100, 0.025, "square", 0.035);

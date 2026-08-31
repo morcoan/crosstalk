@@ -1,4 +1,5 @@
 import { emit } from "../lib/bus";
+import { sfx } from "../lib/audio";
 import { feed, game } from "../game/state";
 import type { ToolSpec } from "../game/types";
 
@@ -74,6 +75,7 @@ export async function runTool(spec: ToolSpec, input: Record<string, unknown>): P
     else session.telemetry.agentActuations++;
   }
   const args = summarizeArgs(input);
+  sfx.radio();
   feed(`AGENT ⚙ ${spec.name}${args ? ` (${args})` : ""}`, "tool");
   try {
     let out = await spec.execute(input ?? {});

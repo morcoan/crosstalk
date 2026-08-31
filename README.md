@@ -28,6 +28,19 @@ exposed *only to your agent*, as live [WebMCP](https://webmachinelearning.github
 
 Neither of you can defuse the bomb alone. **The game is the conversation.**
 
+## 🎛 Built to read like equipment, not a dashboard
+
+Version 1.3 gives the whole experience one physical visual language: stamped field cards, enamel
+controls, an instrument-clock timer, module ownership plates and a TEAM RADIO panel that promotes
+the latest event. The mission rules did not change; the interface now explains them sooner and with
+less text. The menu teaches **observe → communicate → commit**, each briefing states who can do what,
+and every live module names the next callout before exposing its controls.
+
+The pass is grounded in player-motivation, game-feel and accessibility research, with the decisions
+and source links recorded in [`docs/UX_RESEARCH.md`](docs/UX_RESEARCH.md). It is desktop-first but
+fully responsive down to 320px, keyboard operable, reduced-motion aware, and verified with 44px
+mobile touch targets.
+
 ## 🎓 Agent literacy under pressure
 
 Most people first meet an AI agent in a zero-stakes chat. They rarely get to practice the hard part:
@@ -45,7 +58,7 @@ coaching focus. No account, analytics or conversation recording; the dossier sta
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="An agent playing CROSSTALK through native WebMCP tools — every call narrated in the activity feed" width="100%">
+  <img src="docs/demo.gif" alt="An agent playing CROSSTALK through native WebMCP tools — every call narrated in TEAM RADIO" width="100%">
   <br><sub>Recorded against Chromium's <b>native</b> WebMCP implementation — the agent starts the mission, scans the serial tag and reads the manual through <code>executeTool</code>; the human cuts the wire; the FIELD SKILLS debrief names what you practiced.</sub>
 </p>
 
@@ -84,12 +97,12 @@ cooperative, human-in-the-loop workflow the WebMCP explainer describes; CROSSTAL
    - **Chrome 149+** with `chrome://flags/#enable-webmcp-testing` → Enabled → relaunch.
 2. Tell your agent: *“You are my defusal expert in CROSSTALK. Use your WebMCP tools: start with
    `get_briefing` and `get_training_record`, then `get_device_state`, and guide me step by step. Never guess — ask me to read
-   anything you can't sense.”* (there's a COPY OPENER button on the menu).
+   anything you can't sense.”* (there's a **COPY BRIEFING** button on the menu).
 3. Pick a mission, press **ARM DEVICE**, and start talking. Fast.
 
-**Solo** — open **MANUAL** (top right) and play both roles with the printed technical manual.
+**Solo** — open **FIELD MANUAL** (top right) and play both roles with the printed technical manual.
 
-**No agent handy?** Open **TOOLS** — an in-page console that lists every live WebMCP tool and lets
+**No agent handy?** Open **AGENT KIT** — an in-page console that lists every live WebMCP tool and lets
 you invoke the *identical* `execute()` an agent would call, with the same activity-feed narration.
 
 **Prompts worth trying with your agent:**
@@ -158,7 +171,7 @@ Implementation details that make the agent a *good teammate*:
   models toward asking instead of hallucinating.
 - **Instructive failures** — wrong inputs return guidance (“the dial refuses to seat at 3.6 MHz —
   that is not a detent…”), not stack traces.
-- **Visible agency** — every `execute()` is narrated in the on-screen ACTIVITY FEED, so the human
+- **Visible agency** — every `execute()` is narrated in the on-screen TEAM RADIO, so the human
   always sees what their invisible teammate just did. Trust through transparency.
 - **A complete coaching lifecycle** — an always-live local dossier helps the agent choose a drill;
   a debrief-only review tool appears after completion and vanishes on the next mission.
@@ -170,7 +183,7 @@ Implementation details that make the agent a *good teammate*:
 
 ## ✅ Verified against the real thing
 
-Three layers of proof, all runnable from this repo:
+Four layers of proof, all runnable from this repo:
 
 1. **`npm test`** — 18 unit tests guard the manual↔logic pact and versioned dossier behavior (every
    generated wire layout resolves to a legal cut; exactly one keypad column matches any pick; echo
@@ -183,8 +196,11 @@ Three layers of proof, all runnable from this repo:
    behind the Chrome flag) and verifies against the **native WebMCP implementation**: real
    `registerTool` schema validation, native `getTools()`/`executeTool()` driving a full mission win,
    `toolchange` events on module solves, and the declarative debrief form appearing as a native tool.
+4. **`npm run ux`** — checks the playable hierarchy and interaction path at 1440px, 390px and 320px:
+   keyboard mission selection, explicit role ownership, live next-action feedback, minimum control
+   sizes, sticky mobile timer, utility-menu state, horizontal overflow and reduced motion.
 
-Layers 1–3 run in CI on every push — that's the `verify` badge above. A scheduled job re-verifies
+All four layers run in CI on every push — that's the `verify` badge above. A scheduled job re-verifies
 the **deployed site** daily, and [`scripts/native-live-deep.mjs`](scripts/native-live-deep.mjs)
 plays missions 2 and 3 to zero-strike disarms on the production origin through the native API.
 
@@ -201,9 +217,10 @@ NATIVE WEBMCP VERIFICATION PASSED
 npm install
 npm run dev      # vite dev server
 npm test         # rule/manual invariants (vitest)
-npm run build    # type-check + bundle (~23 KB gzipped, zero runtime deps)
+npm run build    # type-check + bundle (~25 KB gzipped, zero runtime deps)
 npm run smoke    # full co-op playthrough, stubbed WebMCP (playwright)
 npm run native   # verification against Chromium's native WebMCP
+npm run ux       # desktop/mobile interaction and accessibility assertions
 ```
 
 Everything is client-side: no servers, no accounts, no analytics. Missions are seeded — every armed
@@ -219,7 +236,7 @@ src/
   webmcp/
     context.ts     modelContext adapter: registration, lifecycles, feed narration
     tools.ts       base/mission/module tool tiers, reconciled with game state
-  ui/              screens, device board, activity feed, tool console, printed manual
+  ui/              screens, device board, field-kit presentation, team radio, agent kit, manual
 ```
 
 ## 📜 License

@@ -36,6 +36,8 @@ jobs:
       # (--enable-features=WebMCPTesting): registerTool schema validation,
       # native getTools/executeTool, toolchange, declarative form.
       - run: npm run native
+      # Interaction hierarchy, responsive layout, target sizes and reduced motion.
+      - run: npm run ux
 
   live-check:
     name: live site native WebMCP check

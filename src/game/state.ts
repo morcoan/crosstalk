@@ -145,6 +145,7 @@ export function goToBriefing(missionId: string): MissionDef {
 
 /** Build the device and reveal it — the timer starts here. */
 export function armDevice(mission: MissionDef): void {
+  sfx.arm();
   const seed = randomSeed();
   const rng = makeRng(seed);
   const serial = makeSerial(rng);

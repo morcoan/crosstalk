@@ -1,4 +1,5 @@
 import type { GameModule, ModuleCtx, ToolSpec } from "../types";
+import { sfx } from "../../lib/audio";
 
 /**
  * GLYPH KEYPAD — asymmetry: the four glyphs are rendered pixels the agent cannot
@@ -111,7 +112,7 @@ export class KeypadModule implements GameModule {
       key.className = `key${pressed ? " is-lit" : ""}`;
       key.disabled = pressed || this.status === "solved" || !this.ctx.missionLive();
       key.setAttribute("aria-label", `key showing ${g.name} symbol`);
-      key.innerHTML = `<span class="key-glyph">${g.char}</span><span class="key-led"></span>`;
+      key.innerHTML = `<span class="key-glyph">${g.char}</span><span class="key-name">${g.name}</span><span class="key-led"></span>`;
       key.addEventListener("click", () => this.press(id));
       pad.appendChild(key);
     });
@@ -127,6 +128,7 @@ export class KeypadModule implements GameModule {
 
   private press(id: string): void {
     if (!this.ctx.missionLive() || this.status === "solved") return;
+    sfx.click();
     this.ctx.humanAction();
     if (id === this.order[this.progress]) {
       this.progress++;

@@ -4,6 +4,7 @@ import { loadTrainingRecord, recommendMission, trainingTotals } from "../game/tr
 import { webmcpAvailable } from "../webmcp/context";
 import { renderDevice } from "./device";
 import { toggleDrawer } from "./hud";
+import { icon, missionPresentation } from "./presentation";
 
 export const AGENT_PROMPT =
   "You are my defusal expert in CROSSTALK. Use your WebMCP tools: start with get_briefing and " +
@@ -35,32 +36,35 @@ function renderMenu(root: HTMLElement): void {
 
   const hero = el("section", "hero");
   hero.innerHTML = `
+    <div class="hero-eyebrow">FIELD COMMUNICATION EXERCISE</div>
     <h1 class="title">CROSS<span>TALK</span></h1>
-    <p class="tagline">A cooperative defusal game for <b>one human</b> and <b>one AI agent</b>.</p>
-    <p class="subline">You see the device. Your agent holds the manual, the scanner and the servos.
-    Neither of you can disarm it alone — the game lives in what you tell each other.</p>`;
+    <p class="tagline">You see it. Your agent knows it. <b>Talk fast.</b></p>
+    <p class="subline">A cooperative bomb-defusal game for one human and one AI teammate.
+    Neither side has the whole picture.</p>`;
   wrap.appendChild(hero);
 
   const link = el("section", `linkcard ${linked ? "is-ok" : "is-warn"}`);
   link.innerHTML = linked
-    ? `<div class="linkcard-head"><span class="led led-green"></span> AGENT LINK ESTABLISHED</div>
-       <p>This browser exposes WebMCP — your agent can already see the game's tools.
-       Open your agent's chat and paste the opener:</p>
-       <p class="linkcard-alt">Flag enabled but no agent chat in this browser? <b>TOOLS</b> (top right)
-       drives every tool by hand, or use the
+    ? `<div class="linkcard-head">${icon("link")}<span><b>AGENT CONNECTED</b><small>Your teammate has the manual, scanner and remote controls.</small></span></div>
+       <p>Copy the briefing into your agent chat, then choose a mission.</p>
+       <details class="connection-help"><summary>Connection help and technical details</summary>
+       <p>CROSSTALK exposes its equipment through WebMCP. If no agent chat is attached, use <b>AGENT KIT</b>
+       to operate the same tools by hand, or connect through the
        <a href="https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd"
-       target="_blank" rel="noreferrer">Model Context Tool Inspector</a> extension to chat with an agent.</p>`
-    : `<div class="linkcard-head"><span class="led led-amber"></span> NO AGENT LINK DETECTED</div>
-       <p>To play CO-OP, open this page in <b>ChatGPT's in-app browser</b> or <b>Chrome 149+</b> with
-       <code>chrome://flags/#enable-webmcp-testing</code> enabled. Or play <b>SOLO</b> with the printed
-       manual (MANUAL, top right) — and inspect everything an agent would see via TOOLS.</p>`;
+       target="_blank" rel="noreferrer">Model Context Tool Inspector</a>.</p></details>`
+    : `<div class="linkcard-head">${icon("link")}<span><b>PLAY WITH AN AGENT</b><small>Best experienced as a two-player communication game.</small></span></div>
+       <p>Open CROSSTALK in ChatGPT's in-app browser or a WebMCP-enabled Chrome browser. Prefer to explore first?
+       Open the <b>FIELD MANUAL</b> and play solo.</p>
+       <details class="connection-help"><summary>How to enable the agent link</summary><p>Chrome 149+: enable
+       <code>chrome://flags/#enable-webmcp-testing</code>, relaunch, and return here.</p></details>`;
   const promptRow = el("div", "prompt-row");
-  const promptBox = el("code", "prompt-box", esc(AGENT_PROMPT));
-  const copyBtn = el("button", "btn btn-ghost", "COPY OPENER");
+  const promptBox = el("details", "prompt-box");
+  promptBox.innerHTML = `<summary>Preview agent briefing</summary><code>${esc(AGENT_PROMPT)}</code>`;
+  const copyBtn = el("button", "btn btn-primary", "COPY BRIEFING");
   copyBtn.addEventListener("click", () => {
     void copyText(AGENT_PROMPT).then((ok) => {
       copyBtn.textContent = ok ? "COPIED ✓" : "COPY FAILED";
-      setTimeout(() => (copyBtn.textContent = "COPY OPENER"), 1600);
+      setTimeout(() => (copyBtn.textContent = "COPY BRIEFING"), 1600);
     });
   });
   promptRow.append(promptBox, copyBtn);
@@ -73,23 +77,30 @@ function renderMenu(root: HTMLElement): void {
   const recommended = recommendMission(record, choices);
   const dossier = el("section", "dossier");
   dossier.innerHTML = `
-    <div><span class="dossier-kicker">LOCAL OPERATOR DOSSIER</span>
-      <b>${totals.completed}/${MISSIONS.length} MISSIONS CLEARED</b></div>
-    <div class="dossier-stats">${totals.cleanWins} clean clear(s) · ${totals.agentReads} agent read(s) ·
-      ${totals.irreversibleConfirmations} confirmed irreversible action(s)</div>
-    <div class="dossier-next">RECOMMENDED DRILL: <b>${recommended.codename}</b></div>`;
+    <div class="dossier-progress"><span class="dossier-kicker">FIELD RECORD</span>
+      <b>${totals.completed}/${MISSIONS.length} MISSIONS CLEARED</b>
+      <span class="progress-track"><i style="width:${(totals.completed / MISSIONS.length) * 100}%"></i></span></div>
+    <div class="dossier-stats"><b>${totals.cleanWins}</b> clean clear${totals.cleanWins === 1 ? "" : "s"}
+      <span>·</span> <b>${totals.attempts}</b> completed run${totals.attempts === 1 ? "" : "s"}</div>
+    <div class="dossier-next"><span>RECOMMENDED</span><b>${recommended.codename}</b></div>`;
   wrap.appendChild(dossier);
 
   const grid = el("section", "mission-grid");
   MISSIONS.forEach((m, i) => {
     const best = bestFor(m.id);
-    const card = el("button", "mission-card");
+    const art = missionPresentation[m.id];
+    const isRecommended = recommended.id === m.id;
+    const card = el("button", `mission-card mission-${m.id}${isRecommended ? " is-recommended" : ""}`);
     card.innerHTML = `
-      <div class="mission-index">${String(i + 1).padStart(2, "0")}</div>
+      ${isRecommended ? '<div class="mission-ribbon">RECOMMENDED</div>' : ""}
+      <div class="mission-top"><span class="mission-index">${String(i + 1).padStart(2, "0")}</span>
+        <span class="mission-threat">${art.threat}</span></div>
+      <div class="mission-insignia">${icon(art.icon)}</div>
       <div class="mission-name">${m.codename}</div>
-      <div class="mission-meta">${m.tagline} · fuse ${fmtClock(m.seconds * 1000)}</div>
-      <div class="mission-best">${best ? `BEST: ${fmtClock(best.msLeft)} left · ${best.strikes} strike(s)` : "NO RECORD"}</div>
-      <div class="mission-cta">OPEN BRIEFING ▸</div>`;
+      <div class="mission-flavor">${art.flavor}</div>
+      <div class="mission-meta"><span>${m.modules.length} MODULE${m.modules.length === 1 ? "" : "S"}</span><span>FUSE ${fmtClock(m.seconds * 1000)}</span></div>
+      <div class="mission-best">${best ? `BEST ${fmtClock(best.msLeft)} · ${best.strikes} STRIKE${best.strikes === 1 ? "" : "S"}` : "UNTESTED DEVICE"}</div>
+      <div class="mission-cta">OPEN BRIEFING <span>→</span></div>`;
     card.addEventListener("click", () => goToBriefing(m.id));
     grid.appendChild(card);
   });
@@ -97,12 +108,9 @@ function renderMenu(root: HTMLElement): void {
 
   const how = el("section", "howto");
   how.innerHTML = `
-    <div class="how-col"><h3>YOU SEE</h3><p>Wire colors, glyphs, gauge needles, displays, beeps —
-      painted pixels and sound an agent can't sense. And only you can press, cut and transmit.</p></div>
-    <div class="how-col"><h3>YOUR AGENT KNOWS</h3><p>The technical manual, the RFID serial scanner and
-      servo actuators — exposed to it as live WebMCP tools that appear and vanish with the device state.</p></div>
-    <div class="how-col"><h3>YOU TALK</h3><p>Describe what you see; your agent applies the rules and
-      calls its tools; you act with your hands. Three strikes or zero seconds and it's confetti. Loud confetti.</p></div>`;
+    <div class="how-col"><span class="how-step">01</span>${icon("eye")}<h3>OBSERVE</h3><p>Read the colors, glyphs, gauges and sounds your agent cannot sense.</p></div>
+    <div class="how-col"><span class="how-step">02</span>${icon("radio")}<h3>COMMUNICATE</h3><p>Your agent checks the manual and operates equipment on its side.</p></div>
+    <div class="how-col"><span class="how-step">03</span>${icon("hand")}<h3>COMMIT</h3><p>Confirm the instruction, then press, cut or transmit before time runs out.</p></div>`;
   wrap.appendChild(how);
 
   const foot = el("footer", "menu-foot");
@@ -124,27 +132,30 @@ function renderBriefing(root: HTMLElement): void {
   }
   const wrap = el("div", "screen briefing");
   wrap.innerHTML = `
-    <div class="brief-kicker">MISSION BRIEFING</div>
-    <h2 class="brief-name">${m.codename}</h2>
-    <div class="brief-meta">${m.tagline} · FUSE ${fmtClock(m.seconds * 1000)} · STRIKES 3</div>
-    <p class="brief-text">${m.brief}</p>
+    <div class="brief-docket">
+      <div class="brief-kicker">FIELD ASSIGNMENT · ${missionPresentation[m.id].threat}</div>
+      <div class="brief-heading"><div class="brief-insignia">${icon(missionPresentation[m.id].icon)}</div>
+        <div><h2 class="brief-name">${m.codename}</h2><div class="brief-meta">${m.modules.length} MODULE${m.modules.length === 1 ? "" : "S"} · FUSE ${fmtClock(m.seconds * 1000)} · 3 STRIKES</div></div></div>
+      <p class="brief-text">${m.brief}</p>
+      <div class="brief-modules">${m.modules.map((kind) => `<span>${kind.replace("signal", "signal tx").toUpperCase()}</span>`).join("")}</div>
+    </div>
     <div class="brief-roles">
-      <div><b>YOUR JOB:</b> read the device aloud, act with your hands, keep your nerve.</div>
-      <div><b>AGENT'S JOB:</b> get_briefing → consult_manual → tell you exactly what to do.</div>
+      <div>${icon("eye")}<span><b>YOUR ROLE</b>Describe what you see and hear. Perform the physical actions.</span></div>
+      <div>${icon("wrench")}<span><b>AGENT ROLE</b>Read the manual, scan the device and operate remote servos.</span></div>
     </div>`;
   const tip = el(
     "div",
     "brief-tip",
     webmcpAvailable()
-      ? `Tell your agent a device is coming — it can pre-read the manual sections for: <b>${m.modules.join(", ")}</b>.`
-      : `No agent link — open the MANUAL drawer (top right) to play solo before you arm.`
+      ? `Before arming, tell your agent: <b>“Brief us for ${m.codename}.”</b> Start the clock when both of you are ready.`
+      : `Solo mode: open the <b>FIELD MANUAL</b> before arming. The clock starts immediately.`
   );
   wrap.appendChild(tip);
 
   const row = el("div", "brief-actions");
-  const arm = el("button", "btn btn-arm", `ARM DEVICE ▸ ${fmtClock(m.seconds * 1000)}`);
+  const arm = el("button", "btn btn-arm", `ARM DEVICE · ${fmtClock(m.seconds * 1000)}`);
   arm.addEventListener("click", () => armDevice(m));
-  const back = el("button", "btn btn-ghost", "◂ BACK");
+  const back = el("button", "btn btn-ghost", "← MISSION SELECT");
   back.addEventListener("click", () => backToMenu());
   row.append(back, arm);
   wrap.appendChild(row);
@@ -178,42 +189,50 @@ function renderDebrief(root: HTMLElement): void {
   const win = d.result === "disarmed";
   const wrap = el("div", `screen debrief ${win ? "is-win" : "is-loss"}`);
   wrap.innerHTML = `
+    <div class="debrief-stamp">${icon(win ? "shield" : "wire")}<span>${win ? "MISSION COMPLETE" : "MISSION FAILED"}</span></div>
     <div class="debrief-banner">${win ? "DEVICE DISARMED" : "DEVICE DETONATED"}</div>
     <div class="debrief-sub">${d.mission.codename} · SERIAL ${d.serial}</div>
     <div class="debrief-stats">
       <div class="stat"><span>${win ? fmtClock(d.msLeft) : "00:00"}</span><label>time left</label></div>
       <div class="stat"><span>${d.strikes}/3</span><label>strikes</label></div>
-      <div class="stat"><span>${d.toolCalls}</span><label>agent tool calls</label></div>
-      <div class="stat"><span>${rating(d)}</span><label>rating</label></div>
+      <div class="stat"><span>${d.toolCalls}</span><label>team radio calls</label></div>
+      <div class="stat stat-rating"><span>${rating(d)}</span><label>field grade</label></div>
     </div>`;
 
-  // FIELD SKILLS — the impact thesis, demonstrated: name what the player just practiced.
-  const skills = el("section", "skills");
-  skills.innerHTML = `<h3>FIELD SKILLS PRACTICED</h3>${skillLines(d, win)
-    .map((s) => `<div class="skill-row"><span class="skill-name">${s[0]}</span><span class="skill-note">${s[1]}</span></div>`)
-    .join("")}`;
-  wrap.appendChild(skills);
-
   const coaching = el("section", "coaching");
-  coaching.innerHTML = `<div><h3>AGENT COACHING HANDOFF</h3>
-    <p>The debrief just exposed <code>review_last_session</code>. It reports page and tool events only —
-    your conversation stays outside the score.</p></div>`;
-  const reviewBtn = el("button", "btn btn-primary", "COPY REVIEW PROMPT");
+  coaching.innerHTML = `<div>${icon("radio")}<span><h3>REVIEW THE RUN TOGETHER</h3>
+    <p>Ask your agent for one strength, one improvement and the best next drill. The review uses device events only—not your private conversation.</p></span></div>`;
+  const coachingActions = el("div", "coaching-actions");
+  const reviewBtn = el("button", "btn btn-primary", "COPY REVIEW REQUEST");
   reviewBtn.addEventListener("click", () => {
     void copyText(REVIEW_PROMPT).then((ok) => {
       reviewBtn.textContent = ok ? "COPIED ✓" : "COPY FAILED";
-      setTimeout(() => (reviewBtn.textContent = "COPY REVIEW PROMPT"), 1600);
+      setTimeout(() => (reviewBtn.textContent = "COPY REVIEW REQUEST"), 1600);
     });
   });
-  coaching.appendChild(reviewBtn);
+  coachingActions.appendChild(reviewBtn);
+  const next = nextMission(d.mission.id);
+  if (win && next) {
+    const nextBtn = el("button", "btn btn-next", `NEXT: ${next.codename} →`);
+    nextBtn.addEventListener("click", () => goToBriefing(next.id));
+    coachingActions.prepend(nextBtn);
+  }
+  coaching.appendChild(coachingActions);
   wrap.appendChild(coaching);
+
+  // FIELD SKILLS — the impact thesis, demonstrated: name what the player just practiced.
+  const skills = el("section", "skills");
+  skills.innerHTML = `<h3>SKILLS PRACTICED</h3>${skillLines(d, win)
+    .map((s) => `<div class="skill-row"><span class="skill-medal">✓</span><span class="skill-name">${s[0]}</span><span class="skill-note">${s[1]}</span></div>`)
+    .join("")}`;
+  wrap.appendChild(skills);
 
   // Declarative WebMCP tool: a plain HTML form annotated with toolname/tooldescription.
   // While this screen is mounted, agents see a `file_field_report` tool.
-  const reportWrap = el("section", "report");
-  reportWrap.innerHTML = `<h3>FIELD REPORT</h3>
-    <p class="hint">Filed reports land in the squad log below. (This form is itself a WebMCP tool —
-    the declarative API: your agent can file it for you.)</p>`;
+  const reportWrap = document.createElement("details");
+  reportWrap.className = "report";
+  reportWrap.innerHTML = `<summary>FIELD REPORT & SQUAD LOG <span>OPTIONAL</span></summary>
+    <p class="hint">Save a callsign and one-line note for this device. Your agent can also file this report.</p>`;
   const form = document.createElement("form");
   form.className = "report-form";
   form.setAttribute("toolname", "file_field_report");
@@ -274,13 +293,7 @@ function renderDebrief(root: HTMLElement): void {
   const row = el("div", "brief-actions");
   const again = el("button", "btn btn-arm", "RE-ARM SAME MISSION");
   again.addEventListener("click", () => goToBriefing(d.mission.id));
-  const next = nextMission(d.mission.id);
-  if (win && next) {
-    const nextBtn = el("button", "btn btn-primary", `NEXT: ${next.codename} ▸`);
-    nextBtn.addEventListener("click", () => goToBriefing(next.id));
-    row.appendChild(nextBtn);
-  }
-  const menu = el("button", "btn btn-ghost", "◂ MISSION SELECT");
+  const menu = el("button", "btn btn-ghost", "← MISSION SELECT");
   menu.addEventListener("click", () => backToMenu());
   row.append(menu, again);
   wrap.appendChild(row);

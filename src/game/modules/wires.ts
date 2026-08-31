@@ -1,4 +1,5 @@
 import type { GameModule, ModuleCtx, ToolSpec } from "../types";
+import { sfx } from "../../lib/audio";
 
 /**
  * WIRE BAY — asymmetry: the wire colors are painted enamel (human-visible only),
@@ -93,6 +94,7 @@ export class WiresModule implements GameModule {
       row.innerHTML = `
         <span class="wire-num">${i + 1}</span>
         <span class="wire-line"><span class="wire-core"></span></span>
+        <span class="wire-color">${wire.color.toUpperCase()}</span>
         <span class="wire-tag">${wire.cut ? "CUT" : ""}</span>`;
       row.addEventListener("click", () => this.askCut(i));
       bay.appendChild(row);
@@ -108,6 +110,7 @@ export class WiresModule implements GameModule {
 
   private askCut(i: number): void {
     if (this.status === "solved" || this.wires[i].cut) return;
+    sfx.click();
     this.pendingCut = this.pendingCut === i ? null : i;
     this.renderConfirm();
   }
@@ -141,6 +144,7 @@ export class WiresModule implements GameModule {
 
   private cut(i: number): void {
     if (!this.ctx.missionLive() || this.wires[i].cut) return;
+    sfx.click();
     this.ctx.humanAction(true);
     this.pendingCut = null;
     this.wires[i].cut = true;

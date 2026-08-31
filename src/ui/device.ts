@@ -2,6 +2,7 @@ import { el, esc } from "../lib/dom";
 import { on } from "../lib/bus";
 import { dirtyModules, fmtClock, game } from "../game/state";
 import type { GameModule } from "../game/types";
+import { icon, modulePresentation } from "./presentation";
 
 /**
  * The active-device screen: countdown, strike LEDs, serial smudge, one card per
@@ -24,13 +25,14 @@ export function renderDevice(root: HTMLElement): void {
   const top = el("div", "devbar");
   top.innerHTML = `
     <div class="devbar-left">
+      <div class="dev-kicker">ACTIVE DEVICE</div>
       <div class="dev-codename">${d.mission.codename}</div>
       <div class="dev-serial" title="Machine-readable only — your agent can scan_data_tag">
-        SERIAL <span class="serial-smudge">▮▪▮ RFID ▮▪▮</span>
+        DATA TAG <span class="serial-smudge">▮▪▮ RFID ▮▪▮</span>
       </div>
     </div>
-    <div class="dev-timer" data-role="timer">${fmtClock(d.msLeft)}</div>
-    <div class="dev-strikes" data-role="strikes"></div>`;
+    <div class="dev-clock"><span>TIME REMAINING</span><div class="dev-timer" data-role="timer">${fmtClock(d.msLeft)}</div></div>
+    <div class="dev-strike-bank"><span>STRIKES</span><div class="dev-strikes" data-role="strikes"></div></div>`;
   wrap.appendChild(top);
 
   /* -------- device + feed layout -------- */
@@ -42,9 +44,13 @@ export function renderDevice(root: HTMLElement): void {
   d.modules.forEach((mod) => {
     const card = el("div", "module-card");
     const head = el("div", "module-head");
-    head.innerHTML = `<span class="module-label">${mod.label}</span><span class="module-led"></span>`;
+    head.innerHTML = `<span class="module-label">${mod.label}</span><span class="module-status"><span class="module-status-text">ARMED</span><span class="module-led"></span></span>`;
+    const roles = el("div", "module-roles");
+    const meta = modulePresentation[mod.kind];
+    roles.innerHTML = `<div>${icon("eye")}<span><b>YOU</b>${meta.human}</span></div><div>${icon("wrench")}<span><b>AGENT</b>${meta.agent}</span></div>`;
+    const instruction = el("div", "module-instruction", `${meta.instruction}`);
     const body = el("div", "module-body");
-    card.append(head, body);
+    card.append(head, roles, instruction, body);
     grid.appendChild(card);
     bodies.set(mod, body);
     cards.set(mod, card);
@@ -53,9 +59,15 @@ export function renderDevice(root: HTMLElement): void {
   layout.appendChild(grid);
 
   const side = el("aside", "feedpane");
-  side.innerHTML = `<div class="feed-head">ACTIVITY FEED <span class="feed-sub">everything your agent does shows up here</span></div>`;
+  side.innerHTML = `<div class="feed-head">${icon("radio")}<span>TEAM RADIO<small>Agent equipment and device events</small></span></div>`;
+  const feedLatest = el("div", "feed-latest");
+  const feedHistory = document.createElement("details");
+  feedHistory.className = "feed-history";
+  feedHistory.open = true;
+  feedHistory.innerHTML = `<summary>TRANSMISSION HISTORY</summary>`;
   const feedList = el("div", "feed-list");
-  side.appendChild(feedList);
+  feedHistory.appendChild(feedList);
+  side.append(feedLatest, feedHistory);
   layout.appendChild(side);
   wrap.appendChild(layout);
   root.appendChild(wrap);
@@ -70,7 +82,10 @@ export function renderDevice(root: HTMLElement): void {
       .map((i) => `<span class="strike-led${i < d.strikes ? " is-hit" : ""}">✕</span>`)
       .join("");
     d.modules.forEach((mod) => {
-      cards.get(mod)?.classList.toggle("is-solved", mod.status === "solved");
+      const card = cards.get(mod);
+      card?.classList.toggle("is-solved", mod.status === "solved");
+      const status = card?.querySelector<HTMLElement>(".module-status-text");
+      if (status) status.textContent = mod.status === "solved" ? "CLEARED ✓" : "ARMED";
     });
   };
 
@@ -83,7 +98,13 @@ export function renderDevice(root: HTMLElement): void {
   };
 
   const paintFeed = (): void => {
-    feedList.innerHTML = game.feed
+    const entries = game.feed.slice(-60);
+    const latest = entries.at(-1);
+    feedLatest.className = `feed-latest${latest ? ` tone-${latest.tone}` : ""}`;
+    feedLatest.innerHTML = latest
+      ? `<span class="feed-clock">${latest.clock}</span><b>${esc(latest.text)}</b>`
+      : `<span>Radio quiet. Brief your agent and begin the handoff.</span>`;
+    feedList.innerHTML = entries
       .slice(-60)
       .map((f) => `<div class="feed-row tone-${f.tone}"><span class="feed-clock">${f.clock}</span>${esc(f.text)}</div>`)
       .join("");

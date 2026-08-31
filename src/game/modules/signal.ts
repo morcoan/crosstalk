@@ -101,6 +101,7 @@ export class SignalModule implements GameModule {
       );
     }
     this.txMhz = detent.mhz;
+    sfx.servo();
     this.ctx.feed(`Servo seated the TX dial at ${detent.mhz.toFixed(3)} MHz.`, "tool");
     this.ctx.update();
     return (
@@ -163,6 +164,7 @@ export class SignalModule implements GameModule {
 
   private transmit(): void {
     if (!this.ctx.missionLive() || this.status === "solved") return;
+    sfx.click();
     this.ctx.humanAction(this.txMhz !== null);
     if (this.txMhz === null) {
       this.ctx.feed("TRANSMIT pressed with no frequency seated — transmitter idle.", "info");

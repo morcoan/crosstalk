@@ -115,6 +115,7 @@ await record("take1", async (page, call) => {
     await call("file_field_report", { callsign: "WIRE WOLVES", note: "Clean cut. Zero strikes." });
   } catch {
     declarative = "dom-fallback";
+    await page.locator(".report").evaluate((el) => { el.open = true; });
     await page.fill("#callsign", "WIRE WOLVES");
     await page.fill("#note", "Clean cut. Zero strikes.");
     await page.click(".report-form button[type=submit]");

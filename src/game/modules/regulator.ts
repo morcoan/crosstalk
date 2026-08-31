@@ -1,4 +1,5 @@
 import type { GameModule, ModuleCtx, ToolSpec } from "../types";
+import { sfx } from "../../lib/audio";
 
 /**
  * VOLTAGE REGULATOR — inverted asymmetry: only the AGENT can move the needle
@@ -79,6 +80,7 @@ export class RegulatorModule implements GameModule {
     if (magnitude !== "coarse" && magnitude !== "fine") throw new Error('magnitude must be "coarse" or "fine".');
     const step = magnitude === "coarse" ? this.ctx.rng.int(9, 13) : this.ctx.rng.int(2, 4);
     this.value = clamp(this.value + (direction === "up" ? step : -step), 1, 99);
+    sfx.servo();
     this.nudges++;
     this.ctx.feed(`Servo nudged the trim dial ${direction === "up" ? "▲" : "▼"} (${magnitude}).`, "tool");
     this.ctx.update();
@@ -91,6 +93,7 @@ export class RegulatorModule implements GameModule {
   private lock(): string {
     if (this.status === "solved") return "The regulator is already locked.";
     const inside = this.value >= this.zoneLo && this.value <= this.zoneHi;
+    sfx.click();
     if (inside) {
       this.status = "solved";
       this.ctx.feed("Regulator locked inside the green zone — REGULATOR disarmed.", "good");

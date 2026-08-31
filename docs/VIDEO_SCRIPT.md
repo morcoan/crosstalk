@@ -2,12 +2,15 @@
 
 The recorded cut is designed to show the product claim, not merely describe it: an agent reads a persistent local operator dossier, recommends and starts a mission, collaborates through sensory and actuation boundaries, then returns an evidence-bounded coaching focus.
 
+The v1.3 picture pass uses the final analog field-kit UI throughout: stamped mission cards,
+instrument timer, explicit YOU/AGENT role plates, action callouts and the latest TEAM RADIO event.
+
 ## Storyboard
 
 **0:00–1:05 — HANDSHAKE and the learning loop**
 
 - Establish CROSSTALK as a two-player bomb game whose second player is an AI agent.
-- Show the agent-facing WebMCP connection and local operator dossier.
+- Show the agent-facing WebMCP connection and local field record.
 - Call `get_training_record`; use its deterministic recommendation to start HANDSHAKE.
 - Show asymmetric information: the human sees wires while the agent scans the serial and consults its manual.
 - Complete the human-only confirmed cut.

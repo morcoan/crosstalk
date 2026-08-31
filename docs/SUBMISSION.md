@@ -44,19 +44,24 @@ screaming in the background. Three strikes or zero seconds: boom.
 
 Three missions escalate from a 1-module trainer to a 4-module device. There's a printed-manual SOLO
 mode, an in-page WebMCP tool console (invoke everything an agent could, no agent required), a live
-activity feed that narrates every tool call your agent makes, synthesized audio, seeded devices for
+TEAM RADIO panel that narrates every tool call your agent makes, synthesized audio, seeded devices for
 replayability, and a declarative-API field report form on the debrief screen. After every mission, a
 **FIELD SKILLS debrief** names what you just practiced with real numbers — delegation (your agent's
 tool calls), precise description (modules cleared on human-only channels), human-in-the-loop
 confirmation (irreversible actions that went through your hands), and trust calibration (strikes) —
 turning the game's impact thesis into something the player sees, every run.
 
-Version 1.2 closes the coaching loop. A local **OPERATOR DOSSIER** stores attempts, clean clears and
-observable collaboration signals — never chat content. Before play, the read-only
+Version 1.3 closes the coaching loop and presents it as one coherent analog field kit. A local
+**FIELD RECORD** stores attempts, clean clears and observable collaboration signals — never chat
+content. Before play, the read-only
 `get_training_record` tool lets the agent recommend the next drill. On debrief,
 `review_last_session` appears only long enough to turn that run into one evidence-bounded coaching
 focus, then vanishes when the next mission begins. The declarative field report completes the loop:
-recommend → play → review → reflect.
+recommend → play → review → reflect. The menu teaches observe → communicate → commit; mission
+briefings and every live module state human/agent ownership; the latest device event is promoted over
+history; and the 320px responsive layout preserves a sticky timer and 44px touch targets. The look is
+code-native — stamped metal cards, enamel controls, instrument typography and synthesized audio —
+with zero external art or runtime packages.
 
 ### Why this use case is a strong fit for WebMCP
 
@@ -86,18 +91,20 @@ play; CROSSTALK makes those habits memorable.
 
 ### How we built it
 
-- Vite + TypeScript, **zero runtime dependencies** (~23 KB gzipped). All client-side, no accounts.
+- Vite + TypeScript, **zero runtime dependencies** (~25 KB gzipped). All client-side, no accounts.
 - A tiny event bus decouples three layers: game core (seeded missions, five module state machines),
   WebMCP layer (a `document.modelContext` adapter with per-tool abort lifecycles and an owner-diffing
   reconciler), and UI (device board, activity feed, tool console, printed manual).
 - The manual text and module logic are generated from the same data structures, so the agent's
   rules cannot drift from the device's behavior — enforced alongside the versioned dossier by 18 unit tests.
-- Three verification layers: unit tests; a headless-Chromium smoke run that plays all three missions
+- Four verification layers: unit tests; a headless-Chromium smoke run that plays all three missions
   to zero-strike disarms using only tool text + DOM (it transcribes the beep pattern by watching the
   speaker LED); and a native run against Chromium's real WebMCP implementation
   (`--enable-features=WebMCPTesting`) proving registration, `executeTool`, `toolchange`, and the
   declarative form all work on the actual API. All of it runs in public CI on every push (the
-  “verify” badge), and the no-agent experience is verified on Chromium, Firefox and WebKit.
+  “verify” badge); a UX suite checks hierarchy, keyboard selection, minimum control sizes,
+  responsive overflow, sticky timer behavior and reduced motion at 1440px, 390px and 320px; and the
+  no-agent experience is verified on Chromium, Firefox and WebKit.
 
 ### Challenges
 
@@ -138,13 +145,13 @@ all created during the hackathon. No pre-existing code was extended.
 
 1. Open the live URL in ChatGPT's in-app browser, or Chrome 149+ with
    `chrome://flags/#enable-webmcp-testing` enabled.
-2. The menu shows **AGENT LINK ESTABLISHED** when WebMCP is detected. Click **COPY OPENER** and
+2. The menu shows **AGENT READY** when WebMCP is detected. Click **COPY BRIEFING** and
    paste it to your agent — or just ask: *"check your tools and get the briefing."*
 3. Start with mission 1 (HANDSHAKE, one wire bay) — a clean 2-minute demo of the loop. Mission 2
    (CROSSED WIRES) has the inverted-asymmetry regulator; mission 3 (SILENT FREQUENCY) is the full
    four-module device including the audio transmitter.
-4. No agent? Click **TOOLS** (top right): every live WebMCP tool is listed and invokable in-page
-   through the identical execute path. **MANUAL** opens the printed manual for solo play.
+4. No agent? Click **AGENT KIT** (top right): every live WebMCP tool is listed and invokable in-page
+   through the identical execute path. **FIELD MANUAL** opens the printed manual for solo play.
 5. Prompts that show the design fast: *“What can you sense on this device — and what do you need
    me for?”* · *“Start mission 2 and walk me through it, never guess.”* · after a win: *“File our
    field report — callsign WIRE WOLVES”* (exercises the declarative form tool) · on debrief:

@@ -1,4 +1,5 @@
 import type { GameModule, ModuleCtx, ToolSpec } from "../types";
+import { sfx } from "../../lib/audio";
 
 /**
  * ECHO MEMORY CORE — asymmetry: the display digit and shuffled button labels are
@@ -165,6 +166,7 @@ export class EchoModule implements GameModule {
 
   private press(position: number): void {
     if (!this.ctx.missionLive() || this.status === "solved") return;
+    sfx.click();
     this.ctx.humanAction();
     const correct = this.correctPosition();
     if (position === correct) {
