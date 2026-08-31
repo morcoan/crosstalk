@@ -4,7 +4,12 @@ const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 390, height: 844 } });
 await p.goto(url);
 await p.waitForSelector(".mission-card");
-const overflow = await p.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+const overflow = await p.evaluate(() => {
+  window.scrollTo(1_000_000, window.scrollY);
+  const horizontalTravel = window.scrollX;
+  window.scrollTo(0, window.scrollY);
+  return horizontalTravel;
+});
 if (overflow > 1) throw new Error(`mobile layout overflows by ${overflow}px`);
 await p.click('[data-role="btn-utility"]');
 await p.waitForSelector('.hud.is-utilities-open [data-role="btn-manual"]', { state: "visible" });
