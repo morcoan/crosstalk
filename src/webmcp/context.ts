@@ -66,7 +66,13 @@ function statusSuffix(): string {
 
 /** Shared execution path for real agents AND the in-page Tool Console. */
 export async function runTool(spec: ToolSpec, input: Record<string, unknown>): Promise<string> {
-  if (game.device && game.device.result === null) game.device.toolCalls++;
+  const session = game.device && game.device.result === null ? game.device : null;
+  if (session) {
+    session.toolCalls++;
+    session.telemetry.toolUsage[spec.name] = (session.telemetry.toolUsage[spec.name] ?? 0) + 1;
+    if (spec.readOnly) session.telemetry.agentReads++;
+    else session.telemetry.agentActuations++;
+  }
   const args = summarizeArgs(input);
   feed(`AGENT ⚙ ${spec.name}${args ? ` (${args})` : ""}`, "tool");
   try {
@@ -76,6 +82,7 @@ export async function runTool(spec: ToolSpec, input: Record<string, unknown>): P
     emit("state");
     return out;
   } catch (err) {
+    if (session) session.telemetry.toolErrors++;
     const msg = err instanceof Error ? err.message : String(err);
     feed(`↳ TOOL ERROR: ${preview(msg)}`, "bad");
     emit("state");

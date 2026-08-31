@@ -69,8 +69,10 @@ async function record(name, fn) {
 
 /* ------------ TAKE 1: hook + mission 1 + declarative field report ------------ */
 await record("take1", async (page, call) => {
-  await page.waitForTimeout(16_800); // n00 + n01 over the menu
-  await call("start_mission", { mission_id: "handshake" }); // n02: "my agent starts the mission itself"
+  await page.waitForTimeout(16_800); // n00 + n01 over the menu and local dossier
+  await call("get_training_record");
+  await page.waitForTimeout(900);
+  await call("start_mission", { mission_id: "handshake" }); // n02: dossier recommendation + mission start
   await page.waitForSelector(".btn-arm");
   await page.waitForTimeout(4_700);
   await page.click(".btn-arm");
@@ -99,12 +101,15 @@ await record("take1", async (page, call) => {
   await page.locator(".btn-danger", { hasText: "CONFIRM CUT" }).click();
   await page.waitForSelector(".debrief-banner");
   await page.waitForTimeout(1_800); // banner + stats + FIELD SKILLS panel beauty shot
-  // camera pans down: skills panel first, then the declarative field-report form
+  // camera pans down: skills, debrief-only review handoff, then declarative form
   await page.evaluate(() => document.querySelector(".skills")?.scrollIntoView({ block: "start", behavior: "smooth" }));
   await page.waitForTimeout(1_400);
+  await page.evaluate(() => document.querySelector(".coaching")?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  await call("review_last_session");
+  await page.waitForTimeout(7_000);
   await page.evaluate(() => document.querySelector(".report")?.scrollIntoView({ block: "center", behavior: "smooth" }));
-  await page.waitForTimeout(800);
-  // n06: agent files the declarative field report (squad log updates on camera)
+  await page.waitForTimeout(1_000);
+  // n06b: agent files the declarative field report (squad log updates on camera)
   let declarative = "executeTool";
   try {
     await call("file_field_report", { callsign: "WIRE WOLVES", note: "Clean cut. Zero strikes." });
@@ -114,7 +119,7 @@ await record("take1", async (page, call) => {
     await page.fill("#note", "Clean cut. Zero strikes.");
     await page.click(".report-form button[type=submit]");
   }
-  await page.waitForTimeout(6_500);
+  await page.waitForTimeout(7_000);
   return { declarative };
 });
 
@@ -236,7 +241,7 @@ await record("take3", async (page, call) => {
   await page.waitForTimeout(8_600);
   await page.click(".drawer-head button");
   // n13 over the ticking device
-  await page.waitForTimeout(8_200);
+  await page.waitForTimeout(12_000);
   return { pattern, mhz, sampledAfterArmMs: Date.now() - armedAt };
 });
 

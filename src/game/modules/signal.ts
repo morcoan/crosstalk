@@ -163,6 +163,7 @@ export class SignalModule implements GameModule {
 
   private transmit(): void {
     if (!this.ctx.missionLive() || this.status === "solved") return;
+    this.ctx.humanAction(this.txMhz !== null);
     if (this.txMhz === null) {
       this.ctx.feed("TRANSMIT pressed with no frequency seated — transmitter idle.", "info");
       this.ctx.update();

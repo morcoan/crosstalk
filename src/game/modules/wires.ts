@@ -141,6 +141,7 @@ export class WiresModule implements GameModule {
 
   private cut(i: number): void {
     if (!this.ctx.missionLive() || this.wires[i].cut) return;
+    this.ctx.humanAction(true);
     this.pendingCut = null;
     this.wires[i].cut = true;
     if (i === this.correct) {

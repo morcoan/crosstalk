@@ -83,6 +83,29 @@ if (await page.locator(".debrief-banner").count()) {
   await page.screenshot({ path: "scripts/shots/debrief.png", fullPage: true });
 }
 
+// Capture the winning coaching handoff used in the README/submission gallery.
+await page.locator(".btn-ghost", { hasText: "MISSION SELECT" }).click();
+await page.click(".mission-card:nth-child(1)");
+await page.click(".btn-arm");
+await page.waitForSelector(".wire-bay");
+await page.evaluate(() => window.__callTool("scan_data_tag"));
+await page.evaluate(() => window.__callTool("consult_manual", { section: "wires" }));
+const tag = await page.evaluate(() => window.__callTool("scan_data_tag"));
+const odd = String(tag).includes("ODD");
+const colors = await page.$$eval(".wire", (els) =>
+  els.map((el) => el.getAttribute("aria-label").split(",")[1].trim())
+);
+const colorCount = (color) => colors.filter((value) => value === color).length;
+let safeWire = 0;
+if (colorCount("red") === 0) safeWire = 1;
+else if (colors.at(-1) === "white") safeWire = colors.length - 1;
+else if (colorCount("blue") > 1) safeWire = colors.lastIndexOf("blue");
+void odd; // the three-wire rules do not need serial parity, but the scan is part of the agent path.
+await page.locator(".wire").nth(safeWire).click();
+await page.locator(".btn-danger", { hasText: "CONFIRM CUT" }).click();
+await page.waitForSelector(".debrief-banner");
+await page.screenshot({ path: "scripts/shots/skills-debrief.png", fullPage: true });
+
 await browser.close();
 server.close();
 console.log("shots saved");

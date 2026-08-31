@@ -12,7 +12,7 @@ check("live site renders", true);
 check("live badge shows agent link", (await page.locator(".badge.is-linked").count()) === 1);
 const names = await page.evaluate(async () => (await document.modelContext.getTools()).map((t) => t.name).sort());
 console.log("     live native tools:", names.join(", "));
-check("base tools natively registered on production origin", names.length === 4);
+check("base tools natively registered on production origin", names.length === 5 && names.includes("get_training_record"));
 const call = (n, a = {}) => page.evaluate(async ({ n, a }) => {
   const t = (await document.modelContext.getTools()).find((x) => x.name === n);
   return document.modelContext.executeTool(t, JSON.stringify(a));
@@ -35,6 +35,9 @@ check("LIVE mission disarmed via native executeTool", (await page.textContent(".
 // and be executable end-to-end (browser fills the form, toolautosubmit fires).
 await page.waitForTimeout(500);
 const debriefTools = await page.evaluate(async () => (await document.modelContext.getTools()).map((t) => t.name));
+check("LIVE session review registered natively", debriefTools.includes("review_last_session"));
+const review = String(await call("review_last_session"));
+check("LIVE session review returns evidence-bounded coaching", review.includes("COACHING:") && review.includes("Evidence boundary"));
 check("LIVE declarative form registered natively", debriefTools.includes("file_field_report"));
 try {
   await call("file_field_report", { callsign: "PREFLIGHT CREW", note: "Live declarative check." });

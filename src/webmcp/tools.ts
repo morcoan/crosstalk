@@ -1,18 +1,64 @@
 import { on } from "../lib/bus";
 import { manualSection, MANUAL_SECTIONS } from "../game/manual";
-import { bestFor, fmtClock, game, goToBriefing, MISSIONS, missionLive, rating } from "../game/state";
+import { fmtClock, game, goToBriefing, MISSIONS, missionLive, rating } from "../game/state";
+import { loadTrainingRecord, recommendMission, trainingTotals } from "../game/training";
 import type { ToolSpec } from "../game/types";
 import { syncTools } from "./context";
 
 /**
  * Tool orchestration. Three tiers, mirroring the game state exactly:
- *  - BASE tools: always live (briefing, manual, device state, mission start).
+ *  - BASE tools: always live (briefing, manual, device state, training record, mission start).
  *  - MISSION tools: live only while a device is armed (the RFID scanner).
  *  - MODULE tools: owned by armed modules; they vanish the moment a module is
  *    solved (per-tool AbortControllers → the browser fires `toolchange`).
  */
 
 const BASE_OWNER = "base";
+const missionChoices = () => MISSIONS.map(({ id, codename }) => ({ id, codename }));
+
+export function trainingRecordText(): string {
+  const record = loadTrainingRecord();
+  const choices = missionChoices();
+  const totals = trainingTotals(record, choices);
+  const recommended = recommendMission(record, choices);
+  const rows = MISSIONS.map((mission) => {
+    const stats = record.missions[mission.id];
+    if (!stats?.attempts) return `- ${mission.codename}: unattempted`;
+    const best = stats.wins ? `best ${stats.bestRating}, ${fmtClock(stats.bestMsLeft)} left` : "no disarm yet";
+    return `- ${mission.codename}: ${stats.attempts} attempt(s), ${stats.wins} disarm(s), ${stats.cleanWins} clean; ${best}`;
+  });
+  return `CROSSTALK — LOCAL OPERATOR DOSSIER
+Progress: ${totals.completed}/${MISSIONS.length} missions cleared · ${totals.cleanWins} clean clear(s) · ${totals.attempts} completed run(s).
+Practice signals: ${totals.agentReads} agent read(s), ${totals.agentActuations} actuation(s), ${totals.humanActions} human input(s), ${totals.irreversibleConfirmations} irreversible confirmation(s), ${totals.toolErrors} tool error(s).
+${rows.join("\n")}
+RECOMMENDED DRILL: ${recommended.codename}. Records are local to this browser and measure page events, not the conversation.`;
+}
+
+export function lastSessionReviewText(): string {
+  const d = game.device;
+  if (!d?.result || game.screen !== "debrief") {
+    throw new Error("No completed session is on the debrief screen. Finish a mission, then review it.");
+  }
+  const t = d.telemetry;
+  const record = loadTrainingRecord();
+  const next = recommendMission(record, missionChoices());
+  const usage = Object.entries(t.toolUsage)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([name, count]) => `${name}×${count}`)
+    .join(", ") || "none";
+  let coaching = `Advance to ${next.codename}; keep the describe → look up → decide → confirm → act loop crisp.`;
+  if (d.result === "detonated") coaching = `Repeat ${d.mission.codename}; recover one module at a time and re-check state after each action.`;
+  else if (t.toolErrors > 0) coaching = `Repeat ${d.mission.codename}; verify tool state and parameters before retrying.`;
+  else if (d.strikes > 0) coaching = `Repeat ${d.mission.codename}; state the rule and verify the human-only signal before committing.`;
+
+  return `CROSSTALK — LAST SESSION REVIEW
+Outcome: ${d.result.toUpperCase()} · ${d.mission.codename} · ${fmtClock(d.msLeft)} left · ${d.strikes}/3 strikes · ${rating(d)}.
+Modules: ${d.modules.filter((module) => module.status === "solved").length}/${d.modules.length} solved.
+Agent side: ${t.agentReads} read(s), ${t.agentActuations} actuation(s), ${t.toolErrors} tool error(s). Usage: ${usage}.
+Human side: ${t.humanActions} physical input(s), including ${t.irreversibleConfirmations} confirmed irreversible action(s).
+COACHING: ${coaching}
+Evidence boundary: these are observable page/tool events only; CROSSTALK does not record or score the conversation.`;
+}
 
 const getBriefing: ToolSpec = {
   name: "get_briefing",
@@ -24,24 +70,20 @@ const getBriefing: ToolSpec = {
   inputSchema: { type: "object", properties: {} },
   readOnly: true,
   execute: () => {
-    const missions = MISSIONS.map((m) => {
-      const best = bestFor(m.id);
-      return `- id "${m.id}" — ${m.codename} (${m.tagline}, ${fmtClock(m.seconds * 1000)} fuse)${
-        best ? ` · best: disarmed with ${fmtClock(best.msLeft)} left` : ""
-      }`;
-    }).join("\n");
+    const missions = MISSIONS.map(
+      (m) => `- id "${m.id}" — ${m.codename} (${m.tagline}, ${fmtClock(m.seconds * 1000)} fuse)`
+    ).join("\n");
     return `CROSSTALK — AGENT BRIEFING
 You and your human partner are a bomb-disposal team. A device with a countdown timer and
 several modules is on the bench. You two share the work, but not the senses:
 
-YOUR SIDE (the agent): the technical manual (consult_manual), the RFID serial scanner
-(scan_data_tag, while a device is armed), servo actuators on certain modules, and perfect
-memory. YOU decide what to do.
+YOUR SIDE (the agent): the manual (consult_manual), local training record
+(get_training_record), RFID scanner (scan_data_tag while armed), servo tools, and memory.
 THEIR SIDE (the human): eyes and hands. Paint colors, glyphs, needles, displays and beeps
 are not machine-readable, and only the human can cut wires, press keys and hit TRANSMIT.
 
-ETIQUETTE (read carefully — this keeps the device intact):
-1. Call get_device_state to see what is armed, then consult_manual for those modules.
+ETIQUETTE:
+1. Call get_training_record to choose a drill. Once armed, call get_device_state and consult_manual.
 2. Never guess. If a rule needs something you cannot sense, ask your partner to read it aloud.
 3. Before anything irreversible (cut/lock/transmit) state the rule and the exact action.
 4. Be brief and imperative: "Cut wire 3." beats a paragraph.
@@ -51,8 +93,30 @@ MISSIONS:
 ${missions}
 
 To play: call start_mission with a mission id (or ask your partner to pick one on screen).
-The human presses ARM DEVICE to start the clock. Good luck — keep the crosstalk crisp.`;
+The human presses ARM DEVICE to start the clock. On debrief, call review_last_session. Keep it crisp.`;
   }
+};
+
+const getTrainingRecord: ToolSpec = {
+  name: "get_training_record",
+  title: "Get local operator dossier",
+  description:
+    "Read this browser's local CROSSTALK training record: attempts, clears, collaboration signals, " +
+    "and the deterministic next-drill recommendation. It measures page events, never the conversation.",
+  inputSchema: { type: "object", properties: {} },
+  readOnly: true,
+  execute: trainingRecordText
+};
+
+const reviewLastSession: ToolSpec = {
+  name: "review_last_session",
+  title: "Review completed session",
+  description:
+    "Review the mission currently shown on the debrief screen. Returns observable agent-tool and human-input " +
+    "signals, one coaching focus, and the recommended next drill. Available only after a completed run.",
+  inputSchema: { type: "object", properties: {} },
+  readOnly: true,
+  execute: lastSessionReviewText
 };
 
 const consultManual: ToolSpec = {
@@ -170,6 +234,7 @@ MFR: KOVACS & TARR BENCHWORKS · BATCH ${String(d.seed % 97).padStart(2, "0")} �
 function refresh(): void {
   const desired: { spec: ToolSpec; owner: unknown }[] = [
     { spec: getBriefing, owner: BASE_OWNER },
+    { spec: getTrainingRecord, owner: BASE_OWNER },
     { spec: consultManual, owner: BASE_OWNER },
     { spec: getDeviceState, owner: BASE_OWNER },
     { spec: startMission, owner: BASE_OWNER }
@@ -182,6 +247,8 @@ function refresh(): void {
         for (const spec of mod.tools()) desired.push({ spec, owner: mod });
       }
     }
+  } else if (d && d.result !== null && game.screen === "debrief") {
+    desired.push({ spec: reviewLastSession, owner: d });
   }
   syncTools(desired);
 }

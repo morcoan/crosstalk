@@ -34,6 +34,17 @@ export interface ModuleCtx {
   missionLive(): boolean;
   /** Human-visible flavor events for the activity feed. */
   feed(text: string, tone?: FeedTone): void;
+  /** Record a physical input. Irreversible means a confirmed cut/transmission. */
+  humanAction(irreversible?: boolean): void;
+}
+
+export interface SessionTelemetry {
+  agentReads: number;
+  agentActuations: number;
+  toolErrors: number;
+  humanActions: number;
+  irreversibleConfirmations: number;
+  toolUsage: Record<string, number>;
 }
 
 export type FeedTone = "info" | "tool" | "good" | "bad" | "system";

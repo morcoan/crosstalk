@@ -165,6 +165,7 @@ export class EchoModule implements GameModule {
 
   private press(position: number): void {
     if (!this.ctx.missionLive() || this.status === "solved") return;
+    this.ctx.humanAction();
     const correct = this.correctPosition();
     if (position === correct) {
       this.history.push({

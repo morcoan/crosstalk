@@ -63,7 +63,7 @@ const names = await page.evaluate(async () => (await document.modelContext.getTo
 console.log("     native getTools():", names.join(", "));
 check(
   "all base tools accepted by native registration",
-  ["consult_manual", "get_briefing", "get_device_state", "start_mission"].every((n) => names.includes(n))
+  ["consult_manual", "get_briefing", "get_device_state", "get_training_record", "start_mission"].every((n) => names.includes(n))
 );
 
 const canExecute = await page.evaluate(() => typeof document.modelContext.executeTool === "function");
@@ -85,6 +85,8 @@ async function nativeCall(name, args = {}) {
 if (canExecute) {
   const brief = await nativeCall("get_briefing");
   check("native executeTool returns briefing", String(brief).includes("CROSSTALK"));
+  const record = await nativeCall("get_training_record");
+  check("native dossier recommends a drill", String(record).includes("RECOMMENDED DRILL"));
 
   // Full mission 1 playthrough over the NATIVE tool path.
   await nativeCall("start_mission", { mission_id: "handshake" });
@@ -118,6 +120,9 @@ if (canExecute) {
   await page.waitForTimeout(300);
   const debriefTools = await page.evaluate(async () => (await document.modelContext.getTools()).map((t) => t.name));
   console.log("     debrief tools:", debriefTools.join(", "));
+  check("debrief-only review registered as native tool", debriefTools.includes("review_last_session"));
+  const review = await nativeCall("review_last_session");
+  check("native session review returns bounded evidence", String(review).includes("Evidence boundary"));
   check("declarative form registered as native tool", debriefTools.includes("file_field_report"));
 
   const changes = await page.evaluate(() => window.__toolchanges);

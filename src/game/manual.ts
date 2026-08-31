@@ -112,7 +112,7 @@ function echoSection(): string {
   }).join("\n\n");
   return `CROSSTALK TECHNICAL MANUAL — SEC.4 ECHO CORE
 The core runs FOUR stages. Each stage shows a DISPLAY digit (1-4) above four buttons
-whose LABELS are shuffled every stage. Display and labels are on-screen only — ask
+with shuffled LABELS. Display and labels are on-screen only — ask
 your partner to read the display digit and the four labels LEFT TO RIGHT each stage.
 POSITION means 1=leftmost … 4=rightmost. LABEL means the printed digit.
 Rules reference earlier stages; your get_echo_log tool holds the exact history.

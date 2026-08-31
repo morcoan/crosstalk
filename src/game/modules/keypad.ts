@@ -127,6 +127,7 @@ export class KeypadModule implements GameModule {
 
   private press(id: string): void {
     if (!this.ctx.missionLive() || this.status === "solved") return;
+    this.ctx.humanAction();
     if (id === this.order[this.progress]) {
       this.progress++;
       this.flashWrong = false;

@@ -2,7 +2,17 @@ import { emit } from "../lib/bus";
 import { store } from "../lib/dom";
 import { sfx } from "../lib/audio";
 import { makeRng, randomSeed, type Rng } from "../lib/rng";
-import type { FeedEntry, FeedTone, GameModule, MissionDef, MissionResult, ModuleCtx, Screen } from "./types";
+import type {
+  FeedEntry,
+  FeedTone,
+  GameModule,
+  MissionDef,
+  MissionResult,
+  ModuleCtx,
+  Screen,
+  SessionTelemetry
+} from "./types";
+import { saveCompletedSession } from "./training";
 import { EchoModule } from "./modules/echo";
 import { KeypadModule } from "./modules/keypad";
 import { RegulatorModule } from "./modules/regulator";
@@ -54,6 +64,8 @@ export interface DeviceState {
   startedAt: number;
   msTotal: number;
   toolCalls: number;
+  telemetry: SessionTelemetry;
+  dossierSaved: boolean;
   revealed: boolean; // briefing done, device visible, timer running
 }
 
@@ -148,6 +160,15 @@ export function armDevice(mission: MissionDef): void {
     result: null,
     startedAt: Date.now(),
     toolCalls: 0,
+    telemetry: {
+      agentReads: 0,
+      agentActuations: 0,
+      toolErrors: 0,
+      humanActions: 0,
+      irreversibleConfirmations: 0,
+      toolUsage: {}
+    },
+    dossierSaved: false,
     revealed: true
   };
 
@@ -168,7 +189,11 @@ export function armDevice(mission: MissionDef): void {
         emit("state");
       },
       missionLive,
-      feed
+      feed,
+      humanAction: (irreversible = false) => {
+        device.telemetry.humanActions++;
+        if (irreversible) device.telemetry.irreversibleConfirmations++;
+      }
     };
     const mod = buildModule(kind, ctx, mission.id);
     slot.mod = mod;
@@ -206,6 +231,7 @@ function checkWin(): void {
     feed(`ALL MODULES DISARMED with ${fmtClock(d.msLeft)} remaining. Device released.`, "good");
     game.screen = "debrief";
     saveBest(d);
+    saveTraining(d);
     emit("screen");
     emit("lifecycle");
   }
@@ -215,6 +241,7 @@ function detonate(cause: string): void {
   const d = game.device;
   if (!d || d.result) return;
   d.result = "detonated";
+  saveTraining(d);
   stopLoop();
   sfx.boom();
   feed(`DEVICE DETONATED — ${cause}.`, "bad");
@@ -226,6 +253,20 @@ function detonate(cause: string): void {
   }, 1400);
   emit("state");
   emit("lifecycle");
+}
+
+function saveTraining(d: DeviceState): void {
+  if (d.dossierSaved || !d.result) return;
+  d.dossierSaved = true;
+  saveCompletedSession({
+    missionId: d.mission.id,
+    result: d.result,
+    msLeft: d.msLeft,
+    strikes: d.strikes,
+    rating: rating(d),
+    telemetry: d.telemetry,
+    completedAt: Date.now()
+  });
 }
 
 function startLoop(): void {

@@ -14,7 +14,10 @@ You see the bomb. Your agent holds the manual — as live WebMCP tools. Neither 
 
 ### Inspiration
 
-Every agentic demo we'd seen treats the agent as a chauffeur: it drives, you watch. We wanted to
+Most people first meet an AI agent in a zero-stakes chat. They rarely practice the hard part:
+delegating without surrendering judgment, describing something the agent cannot sense, and verifying
+its work before an irreversible action. New agent users and teams need a safe, memorable way to drill
+those habits. Every agentic demo we'd seen treats the agent as a chauffeur: it drives, you watch. We wanted to
 build the opposite — an experience that is *impossible alone by design*, where a human and their
 agent are genuine teammates with different senses and different hands. The classic party game
 *Keep Talking and Nobody Explodes* proved that "split knowledge + a ticking clock" makes people
@@ -48,6 +51,13 @@ tool calls), precise description (modules cleared on human-only channels), human
 confirmation (irreversible actions that went through your hands), and trust calibration (strikes) —
 turning the game's impact thesis into something the player sees, every run.
 
+Version 1.2 closes the coaching loop. A local **OPERATOR DOSSIER** stores attempts, clean clears and
+observable collaboration signals — never chat content. Before play, the read-only
+`get_training_record` tool lets the agent recommend the next drill. On debrief,
+`review_last_session` appears only long enough to turn that run into one evidence-bounded coaching
+focus, then vanishes when the next mission begins. The declarative field report completes the loop:
+recommend → play → review → reflect.
+
 ### Why this use case is a strong fit for WebMCP
 
 1. **A tool schema is a sensory boundary.** WebMCP's core act — deciding exactly what an agent can
@@ -57,7 +67,7 @@ turning the game's impact thesis into something the player sees, every run.
 2. **It must be client-side.** The bomb is ephemeral, seeded, running at 60fps in the browser with
    WebAudio and a real-time drift simulation. There is no backend to put an MCP server in front of —
    shared live state between human, page and agent is exactly the gap WebMCP exists to fill.
-3. **It exercises the whole spec, honestly.** Nine imperative tools with JSON Schemas and
+3. **It exercises the whole spec, honestly.** Eleven imperative tools with JSON Schemas and
    `readOnlyHint` annotations; per-tool `AbortController` lifecycles so the toolset mirrors game
    state in real time (solve the regulator mid-sentence and its tools vanish from `getTools()`,
    firing `toolchange`); instructive error returns; plus the declarative API
@@ -68,19 +78,20 @@ turning the game's impact thesis into something the player sees, every run.
 Play a real-time cooperative game as *peers*. Before WebMCP, an in-browser agent could only watch
 the DOM over your shoulder or click things for you — with no way for the page to give it different
 senses than yours. CROSSTALK's whole premise — "you can hear the beeps, your agent can turn the
-dial" — was unbuildable. More practically: the game is an unintentional trainer for the skills
-everyone will need this decade — delegating to an agent, describing what you see precisely,
-verifying before acting irreversibly, and trusting a teammate whose work you can see narrated in a
-feed. People learn tools through play; CROSSTALK is agent literacy with a countdown timer.
+dial" — was unbuildable. More practically, CROSSTALK is a replayable agent-literacy drill for new
+agent users and teams: delegation, sensory handoffs, verification before irreversible action, and
+trust calibration with visible consequences. Its dossier reports practice signals rather than
+claiming to measure the private conversation or prove learning outcomes. People learn tools through
+play; CROSSTALK makes those habits memorable.
 
 ### How we built it
 
-- Vite + TypeScript, **zero runtime dependencies** (~20 KB gzipped). All client-side, no accounts.
+- Vite + TypeScript, **zero runtime dependencies** (~23 KB gzipped). All client-side, no accounts.
 - A tiny event bus decouples three layers: game core (seeded missions, five module state machines),
   WebMCP layer (a `document.modelContext` adapter with per-tool abort lifecycles and an owner-diffing
   reconciler), and UI (device board, activity feed, tool console, printed manual).
 - The manual text and module logic are generated from the same data structures, so the agent's
-  rules can never drift from the device's behavior — enforced by 15 unit tests.
+  rules cannot drift from the device's behavior — enforced alongside the versioned dossier by 18 unit tests.
 - Three verification layers: unit tests; a headless-Chromium smoke run that plays all three missions
   to zero-strike disarms using only tool text + DOM (it transcribes the beep pattern by watching the
   speaker LED); and a native run against Chromium's real WebMCP implementation
@@ -136,4 +147,5 @@ all created during the hackathon. No pre-existing code was extended.
    through the identical execute path. **MANUAL** opens the printed manual for solo play.
 5. Prompts that show the design fast: *“What can you sense on this device — and what do you need
    me for?”* · *“Start mission 2 and walk me through it, never guess.”* · after a win: *“File our
-   field report — callsign WIRE WOLVES”* (exercises the declarative form tool).
+   field report — callsign WIRE WOLVES”* (exercises the declarative form tool) · on debrief:
+   *“Call `review_last_session`; give us one strength, one improvement, and the next drill.”*

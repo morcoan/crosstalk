@@ -28,6 +28,22 @@ exposed *only to your agent*, as live [WebMCP](https://webmachinelearning.github
 
 Neither of you can defuse the bomb alone. **The game is the conversation.**
 
+## 🎓 Agent literacy under pressure
+
+Most people first meet an AI agent in a zero-stakes chat. They rarely get to practice the hard part:
+delegating without surrendering judgment, describing a signal the agent cannot sense, verifying its
+reasoning before an irreversible action, and calibrating trust when a mistake has a visible cost.
+
+CROSSTALK is a short, replayable drill for new agent users and teams. A **local operator dossier**
+tracks only observable page events — agent reads and actuations, human inputs, confirmed irreversible
+actions and strikes — never the conversation. Before play, `get_training_record` lets the agent
+recommend a drill. Afterward, debrief-only `review_last_session` turns the run into one evidence-bounded
+coaching focus. No account, analytics or conversation recording; the dossier stays in this browser.
+
+<p align="center">
+  <img src="docs/debrief.png" alt="Evidence-bounded field skills and the debrief-only agent coaching handoff" width="82%">
+</p>
+
 <p align="center">
   <img src="docs/demo.gif" alt="An agent playing CROSSTALK through native WebMCP tools — every call narrated in the activity feed" width="100%">
   <br><sub>Recorded against Chromium's <b>native</b> WebMCP implementation — the agent starts the mission, scans the serial tag and reads the manual through <code>executeTool</code>; the human cuts the wire; the FIELD SKILLS debrief names what you practiced.</sub>
@@ -67,7 +83,7 @@ cooperative, human-in-the-loop workflow the WebMCP explainer describes; CROSSTAL
    - **ChatGPT's in-app browser** — works out of the box, or
    - **Chrome 149+** with `chrome://flags/#enable-webmcp-testing` → Enabled → relaunch.
 2. Tell your agent: *“You are my defusal expert in CROSSTALK. Use your WebMCP tools: start with
-   `get_briefing`, then `get_device_state`, and guide me step by step. Never guess — ask me to read
+   `get_briefing` and `get_training_record`, then `get_device_state`, and guide me step by step. Never guess — ask me to read
    anything you can't sense.”* (there's a COPY OPENER button on the menu).
 3. Pick a mission, press **ARM DEVICE**, and start talking. Fast.
 
@@ -81,6 +97,7 @@ you invoke the *identical* `execute()` an agent would call, with the same activi
 - *“Start mission 2 and walk me through it. Never guess.”*
 - *“The needle is at 34, green zone is 61–69 — get us there and lock it.”*
 - After a win: *“File our field report — callsign WIRE WOLVES.”* (that's the declarative form)
+- On debrief: *“Call `review_last_session`: one thing we did well, one improvement, and our next drill.”*
 
 <p align="center">
   <img src="docs/console.png" alt="The in-page WebMCP tool console" width="70%">
@@ -94,6 +111,7 @@ The registered toolset **is** the game state, reconciled on every transition
 | Tool | Kind | Live when |
 |---|---|---|
 | `get_briefing` | read-only | always |
+| `get_training_record` | read-only | always |
 | `consult_manual` | read-only | always |
 | `get_device_state` | read-only | always |
 | `start_mission` | actuator | always (errors while a device is live) |
@@ -101,6 +119,7 @@ The registered toolset **is** the game state, reconciled on every transition
 | `nudge_regulator` / `lock_regulator` | actuators | REGULATOR module armed |
 | `get_echo_log` | read-only | ECHO CORE module armed |
 | `set_transmitter_frequency` | actuator | SIGNAL TX module armed |
+| `review_last_session` | read-only | debrief screen mounted |
 | `file_field_report` | **declarative** (`<form toolname=…>`) | debrief screen mounted |
 
 Every tool is registered through the standard surface:
@@ -141,7 +160,9 @@ Implementation details that make the agent a *good teammate*:
   that is not a detent…”), not stack traces.
 - **Visible agency** — every `execute()` is narrated in the on-screen ACTIVITY FEED, so the human
   always sees what their invisible teammate just did. Trust through transparency.
-- **Both WebMCP APIs** — nine imperative tools plus a declarative `<form toolname="file_field_report"
+- **A complete coaching lifecycle** — an always-live local dossier helps the agent choose a drill;
+  a debrief-only review tool appears after completion and vanishes on the next mission.
+- **Both WebMCP APIs** — eleven imperative tools plus a declarative `<form toolname="file_field_report"
   toolautosubmit>` on the debrief screen (with `agentInvoked`/`respondWith` handling).
 - The manual text and the module logic are **generated from the same data structures**
   ([`src/game/manual.ts`](src/game/manual.ts)), so rules and reality cannot drift apart — enforced
@@ -151,9 +172,9 @@ Implementation details that make the agent a *good teammate*:
 
 Three layers of proof, all runnable from this repo:
 
-1. **`npm test`** — 15 unit tests guard the manual↔logic pact (every generated wire layout resolves
-   to a legal cut; exactly one keypad column matches any pick; echo rules only reference earlier
-   stages; the signal table is bijective).
+1. **`npm test`** — 18 unit tests guard the manual↔logic pact and versioned dossier behavior (every
+   generated wire layout resolves to a legal cut; exactly one keypad column matches any pick; echo
+   rules only reference earlier stages; corrupt/future training records fail closed).
 2. **`npm run smoke`** — headless Chromium plays **all three missions to zero-strike disarms**
    through a stubbed `document.modelContext`: the “agent” half only reads tool text (manual,
    scans, logs) and calls actuators; the “human” half only reads the DOM and clicks. It even
@@ -180,7 +201,7 @@ NATIVE WEBMCP VERIFICATION PASSED
 npm install
 npm run dev      # vite dev server
 npm test         # rule/manual invariants (vitest)
-npm run build    # type-check + bundle (~20 KB gzipped, zero runtime deps)
+npm run build    # type-check + bundle (~23 KB gzipped, zero runtime deps)
 npm run smoke    # full co-op playthrough, stubbed WebMCP (playwright)
 npm run native   # verification against Chromium's native WebMCP
 ```

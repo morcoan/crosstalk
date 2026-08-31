@@ -34,10 +34,13 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 950 } });
 // ---- WebMCP stub: what ChatGPT's browser / Chrome provide natively ----
 await page.addInitScript(() => {
   const tools = new Map();
+  const seen = new Map();
+  const outputs = [];
   Object.defineProperty(document, "modelContext", {
     value: {
       async registerTool(tool, options) {
         tools.set(tool.name, tool);
+        seen.set(tool.name, tool);
         // Identity-safe like the native implementation: an aborted registration
         // must not tear down a newer tool that reused the name.
         options?.signal?.addEventListener("abort", () => {
@@ -51,10 +54,19 @@ await page.addInitScript(() => {
     configurable: false
   });
   window.__toolNames = () => [...tools.keys()].sort();
+  window.__seenContracts = () => [...seen.values()].map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+    annotations: tool.annotations
+  }));
+  window.__toolOutputLengths = () => [...outputs];
   window.__callTool = async (name, args = {}) => {
     const t = tools.get(name);
     if (!t) throw new Error(`tool not registered: ${name}`);
-    return await t.execute(args);
+    const out = await t.execute(args);
+    outputs.push({ name, length: String(out).length });
+    return out;
   };
 });
 
@@ -244,6 +256,7 @@ async function armMission(id) {
   await page.waitForSelector(".btn-arm");
   await page.click(".btn-arm");
   await page.waitForSelector(".module-grid");
+  await page.waitForTimeout(100); // allow deferred aborts from the previous debrief toolset
 }
 
 const strikes = () => page.locator(".strike-led.is-hit").count();
@@ -259,11 +272,16 @@ const baseTools = await toolNames();
 console.log("     base tools:", baseTools.join(", "));
 check(
   "base tools registered",
-  ["consult_manual", "get_briefing", "get_device_state", "start_mission"].every((t) => baseTools.includes(t))
+  ["consult_manual", "get_briefing", "get_device_state", "get_training_record", "start_mission"].every((t) => baseTools.includes(t))
 );
 
 const briefing = await tool("get_briefing");
 check("get_briefing explains roles", briefing.includes("YOUR SIDE") && briefing.includes("handshake"));
+const dossier = await tool("get_training_record");
+check("fresh dossier recommends training mission", dossier.includes("HANDSHAKE") && dossier.includes("0/3"));
+for (const section of ["index", "general", "wires", "keypad", "regulator", "echo", "signal"]) {
+  await tool("consult_manual", { section });
+}
 const badSection = await tool("consult_manual", { section: "nope" });
 check("unknown manual section → instructive error", badSection.startsWith("TOOL ERROR"));
 
@@ -275,6 +293,10 @@ check("start_mission refuses while device live", dupe.startsWith("TOOL ERROR"));
 await playWires();
 await page.waitForSelector(".debrief-banner");
 check("mission 1 disarmed", (await page.textContent(".debrief-banner")).trim() === "DEVICE DISARMED");
+check("debrief exposes review tool", (await toolNames()).includes("review_last_session"));
+const review = await tool("review_last_session");
+check("session review is evidence-bounded coaching", review.includes("COACHING:") && review.includes("does not record"));
+check("debrief renders coaching handoff", (await page.locator(".coaching").count()) === 1);
 await page.waitForTimeout(250); // deferred abort tick
 check("mission tools aborted after disarm", !(await toolNames()).includes("scan_data_tag"));
 
@@ -311,7 +333,27 @@ const finalState = await tool("get_device_state");
 check("get_device_state reports final disarm", finalState.includes("DISARMED"));
 await page.waitForTimeout(250); // deferred abort tick
 const finalTools = await toolNames();
-check("toolset back to base 4 after mission", finalTools.length === 4);
+check("debrief has base 5 plus session review", finalTools.length === 6 && finalTools.includes("review_last_session"));
+
+const contracts = await page.evaluate(() => window.__seenContracts());
+const contractErrors = contracts.flatMap((tool) => {
+  const errors = [];
+  if (tool.name.length > 30) errors.push(`${tool.name}: name >30`);
+  if (tool.description.length > 500) errors.push(`${tool.name}: description >500`);
+  if (typeof tool.annotations?.readOnlyHint !== "boolean") errors.push(`${tool.name}: readOnlyHint missing`);
+  if (!tool.inputSchema || tool.inputSchema.type !== "object") errors.push(`${tool.name}: invalid schema`);
+  for (const [name, schema] of Object.entries(tool.inputSchema?.properties ?? {})) {
+    if (name.length > 30) errors.push(`${tool.name}.${name}: parameter name >30`);
+    if ((schema.description ?? "").length > 150) errors.push(`${tool.name}.${name}: parameter description >150`);
+  }
+  return errors;
+});
+check("all 11 imperative tool contracts observed", contracts.length === 11);
+check("all observed tool contracts fit Chrome budgets", contractErrors.length === 0);
+if (contractErrors.length) console.log("     contract errors:", contractErrors.join(" | "));
+const outputOverruns = (await page.evaluate(() => window.__toolOutputLengths())).filter((row) => row.length > 1500);
+check("all exercised tool results fit 1.5K budget", outputOverruns.length === 0);
+if (outputOverruns.length) console.log("     output overruns:", JSON.stringify(outputOverruns));
 
 await browser.close();
 server.close();

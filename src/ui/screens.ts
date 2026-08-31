@@ -1,13 +1,17 @@
 import { el, esc, copyText, store } from "../lib/dom";
 import { armDevice, backToMenu, bestFor, fmtClock, game, goToBriefing, MISSIONS, rating } from "../game/state";
+import { loadTrainingRecord, recommendMission, trainingTotals } from "../game/training";
 import { webmcpAvailable } from "../webmcp/context";
 import { renderDevice } from "./device";
 import { toggleDrawer } from "./hud";
 
 export const AGENT_PROMPT =
-  "You are my defusal expert in CROSSTALK. Use your WebMCP tools: start with get_briefing, then " +
-  "get_device_state, and guide me step by step. Never guess — ask me to read anything you can't " +
-  "sense, and tell me exactly what to press, cut or transmit.";
+  "You are my defusal expert in CROSSTALK. Use your WebMCP tools: start with get_briefing and " +
+  "get_training_record, recommend our drill, then use get_device_state and guide me step by step. " +
+  "Never guess — ask me to read anything you can't sense, and tell me exactly what to press, cut or transmit.";
+
+const REVIEW_PROMPT =
+  "Call review_last_session. Tell us one observable thing we did well, one thing to improve, and which drill to run next. Then offer to file our field report.";
 
 export function renderScreen(root: HTMLElement): void {
   root.innerHTML = "";
@@ -62,6 +66,19 @@ function renderMenu(root: HTMLElement): void {
   promptRow.append(promptBox, copyBtn);
   link.appendChild(promptRow);
   wrap.appendChild(link);
+
+  const record = loadTrainingRecord();
+  const choices = MISSIONS.map(({ id, codename }) => ({ id, codename }));
+  const totals = trainingTotals(record, choices);
+  const recommended = recommendMission(record, choices);
+  const dossier = el("section", "dossier");
+  dossier.innerHTML = `
+    <div><span class="dossier-kicker">LOCAL OPERATOR DOSSIER</span>
+      <b>${totals.completed}/${MISSIONS.length} MISSIONS CLEARED</b></div>
+    <div class="dossier-stats">${totals.cleanWins} clean clear(s) · ${totals.agentReads} agent read(s) ·
+      ${totals.irreversibleConfirmations} confirmed irreversible action(s)</div>
+    <div class="dossier-next">RECOMMENDED DRILL: <b>${recommended.codename}</b></div>`;
+  wrap.appendChild(dossier);
 
   const grid = el("section", "mission-grid");
   MISSIONS.forEach((m, i) => {
@@ -177,6 +194,20 @@ function renderDebrief(root: HTMLElement): void {
     .join("")}`;
   wrap.appendChild(skills);
 
+  const coaching = el("section", "coaching");
+  coaching.innerHTML = `<div><h3>AGENT COACHING HANDOFF</h3>
+    <p>The debrief just exposed <code>review_last_session</code>. It reports page and tool events only —
+    your conversation stays outside the score.</p></div>`;
+  const reviewBtn = el("button", "btn btn-primary", "COPY REVIEW PROMPT");
+  reviewBtn.addEventListener("click", () => {
+    void copyText(REVIEW_PROMPT).then((ok) => {
+      reviewBtn.textContent = ok ? "COPIED ✓" : "COPY FAILED";
+      setTimeout(() => (reviewBtn.textContent = "COPY REVIEW PROMPT"), 1600);
+    });
+  });
+  coaching.appendChild(reviewBtn);
+  wrap.appendChild(coaching);
+
   // Declarative WebMCP tool: a plain HTML form annotated with toolname/tooldescription.
   // While this screen is mounted, agents see a `file_field_report` tool.
   const reportWrap = el("section", "report");
@@ -277,17 +308,7 @@ function nextMission(id: string): (typeof MISSIONS)[number] | null {
  * impact thesis (agent literacy through play), demonstrated with real numbers.
  */
 function skillLines(d: NonNullable<typeof game.device>, win: boolean): [string, string][] {
-  const feedTexts = game.feed.map((f) => f.text);
-  const agentCalls = feedTexts.filter((t) => t.startsWith("AGENT ⚙"));
-  const countCall = (name: string) => agentCalls.filter((t) => t.includes(name)).length;
-  const lookups =
-    countCall("consult_manual") + countCall("get_device_state") + countCall("scan_data_tag") +
-    countCall("get_briefing") + countCall("get_echo_log");
-  const actuations =
-    countCall("nudge_regulator") + countCall("lock_regulator") + countCall("set_transmitter_frequency");
-  const humanActs =
-    feedTexts.filter((t) => t.includes(") cut —")).length +
-    feedTexts.filter((t) => t.startsWith("Transmission on")).length;
+  const t = d.telemetry;
   const solved = d.modules.filter((m) => m.status === "solved").length;
 
   if (d.toolCalls === 0) {
@@ -297,9 +318,9 @@ function skillLines(d: NonNullable<typeof game.device>, win: boolean): [string, 
     ];
   }
   const lines: [string, string][] = [
-    ["DELEGATION", `your agent worked its side: ${d.toolCalls} tool call${d.toolCalls === 1 ? "" : "s"} — ${lookups} sensor/manual reads, ${actuations} servo actuation${actuations === 1 ? "" : "s"}.`],
-    ["PRECISE DESCRIPTION", `${solved}/${d.modules.length} modules cleared on channels only you could sense — paint, glyphs, needles, beeps.`],
-    ["HUMAN IN THE LOOP", humanActs > 0 ? `${humanActs} irreversible action${humanActs === 1 ? "" : "s"} went through your hands — the agent advised, you confirmed.` : "no irreversible actions taken — nothing to regret."],
+    ["DELEGATION", `your agent worked its side: ${d.toolCalls} tool call${d.toolCalls === 1 ? "" : "s"} — ${t.agentReads} sensor/manual reads, ${t.agentActuations} servo actuation${t.agentActuations === 1 ? "" : "s"}.`],
+    ["SENSORY HANDOFF", `${solved}/${d.modules.length} modules cleared on channels requiring human-only signals — paint, glyphs, needles, displays or beeps.`],
+    ["HUMAN IN THE LOOP", t.irreversibleConfirmations > 0 ? `${t.irreversibleConfirmations} irreversible action${t.irreversibleConfirmations === 1 ? "" : "s"} went through your hands after an explicit on-screen confirmation.` : `${t.humanActions} physical input${t.humanActions === 1 ? "" : "s"} recorded; no irreversible action was confirmed.`],
     ["TRUST CALIBRATION", d.strikes === 0 ? "zero strikes — you verified before acting, every time." : `${d.strikes} strike${d.strikes === 1 ? "" : "s"} — wrong guesses cost; verify before you act.`]
   ];
   if (win) {
