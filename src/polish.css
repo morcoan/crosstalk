@@ -751,6 +751,192 @@ html {
     #565f50;
 }
 
+/* SIGNAL TX must communicate the same rhythm with or without audio. */
+.module-signal .speaker {
+  display: grid;
+  grid-template-columns: minmax(118px, 1fr) 92px;
+  gap: 10px;
+  min-height: 116px;
+  padding: 9px;
+  overflow: hidden;
+  isolation: isolate;
+  border-color: #20251f;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 6%), transparent 48%),
+    #30372f;
+  box-shadow: inset 0 0 0 1px rgb(194 190 153 / 13%), inset 0 0 18px rgb(0 0 0 / 45%);
+}
+
+.module-signal .speaker-grill {
+  position: relative;
+  inset: auto;
+  display: flex;
+  min-width: 0;
+  min-height: 96px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 2px solid #1b201b;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at center, transparent 0 27px, rgb(19 23 20 / 75%) 28px 30px, transparent 31px),
+    radial-gradient(circle, #111611 0 2px, transparent 2.5px) 0 0 / 11px 11px,
+    #555d51;
+  box-shadow: inset 0 0 22px rgb(0 0 0 / 52%);
+  opacity: 1;
+  transition: filter 70ms linear, background-color 70ms linear, box-shadow 70ms linear;
+}
+
+.module-signal .speaker-grill::before {
+  content: "";
+  position: absolute;
+  width: 66px;
+  height: 66px;
+  border: 2px solid rgb(22 27 23 / 84%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(105 114 99 / 32%) 0 20%, rgb(28 34 29 / 75%) 21% 28%, transparent 29%);
+  box-shadow: 0 0 0 7px rgb(20 24 21 / 34%);
+  transition: transform 70ms linear, border-color 70ms linear, box-shadow 70ms linear;
+}
+
+.module-signal .speaker-grill i {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 5px;
+  height: 46px;
+  border-radius: 4px;
+  background: #899184;
+  box-shadow: 0 0 0 1px rgb(16 19 16 / 74%);
+  opacity: 0.38;
+  transform: scaleY(0.28);
+  transform-origin: center;
+}
+
+.module-signal .speaker-grill i:nth-child(2),
+.module-signal .speaker-grill i:nth-child(5) {
+  height: 62px;
+}
+
+.module-signal .speaker-grill i:nth-child(3),
+.module-signal .speaker-grill i:nth-child(4) {
+  height: 78px;
+}
+
+.speaker-pulse {
+  display: grid;
+  min-height: 96px;
+  padding: 8px 5px 6px;
+  place-items: center;
+  align-content: space-between;
+  border: 2px solid #1d221d;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 6%), transparent 34%),
+    #262d27;
+  box-shadow: inset 0 0 0 1px rgb(215 202 151 / 9%);
+  transition: border-color 70ms linear, background-color 70ms linear, box-shadow 70ms linear;
+}
+
+.speaker-pulse-caption,
+.speaker-pulse-label {
+  color: #bbc1af;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-align: center;
+}
+
+.module-signal .speaker-led {
+  position: relative;
+  top: auto;
+  right: auto;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 4px solid #111512;
+  background:
+    radial-gradient(circle at 38% 32%, rgb(173 77 63 / 45%) 0 11%, transparent 12%),
+    radial-gradient(circle, #5e2822 0 45%, #351a18 67%, #1e1716 100%);
+  box-shadow: 0 0 0 2px #646b5f, inset 0 -7px 10px rgb(0 0 0 / 48%);
+  transition: transform 55ms linear, background 55ms linear, box-shadow 55ms linear, border-color 55ms linear;
+}
+
+.module-signal .speaker-led::before {
+  content: "";
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgb(255 221 133 / 9%);
+}
+
+.module-signal .speaker-led.is-on {
+  border-color: #4d3616;
+  background:
+    radial-gradient(circle at 35% 30%, #fff6bf 0 12%, transparent 13%),
+    radial-gradient(circle, #ffe171 0 38%, #f0a72e 62%, #85451d 100%);
+  box-shadow:
+    0 0 0 3px #ba7925,
+    0 0 18px 7px rgb(255 192 64 / 86%),
+    0 0 42px 14px rgb(255 175 42 / 38%),
+    inset 0 -5px 9px rgb(153 70 15 / 28%);
+  transform: scale(1.13);
+}
+
+.module-signal .speaker.is-beeping .speaker-pulse {
+  border-color: #d39831;
+  background: #3b3422;
+  box-shadow: inset 0 0 0 1px rgb(255 216 118 / 23%), 0 0 15px rgb(223 165 54 / 18%);
+}
+
+.module-signal .speaker.is-beeping .speaker-pulse-caption,
+.module-signal .speaker.is-beeping .speaker-pulse-label {
+  color: #ffe39a;
+}
+
+.module-signal .speaker.is-beeping .speaker-pulse-label {
+  padding: 3px 7px;
+  color: #241806;
+  background: #f0b94a;
+}
+
+.module-signal .speaker.is-beeping .speaker-grill {
+  filter: brightness(1.34);
+  background-color: #697461;
+  box-shadow: inset 0 0 18px rgb(222 174 71 / 24%), 0 0 13px rgb(223 165 54 / 18%);
+}
+
+.module-signal .speaker.is-beeping .speaker-grill::before {
+  border-color: #c18b34;
+  box-shadow: 0 0 0 7px rgb(223 165 54 / 14%), 0 0 21px rgb(223 165 54 / 32%);
+  transform: scale(1.08);
+}
+
+.module-signal .speaker.is-beeping .speaker-grill i {
+  background: #ffd36c;
+  box-shadow: 0 0 7px rgb(255 194 69 / 72%);
+  opacity: 0.94;
+  transform: scaleY(1);
+  animation: signal-meter-kick 150ms steps(2, end) infinite alternate;
+}
+
+.module-signal .speaker.is-beeping .speaker-grill i:nth-child(2n) {
+  animation-delay: -75ms;
+}
+
+.module-signal .speaker.is-beeping .speaker-grill i:nth-child(3n) {
+  animation-delay: -115ms;
+}
+
+@keyframes signal-meter-kick {
+  from { transform: scaleY(0.48); }
+  to { transform: scaleY(1); }
+}
+
 .feedpane {
   top: 28px;
 }
@@ -1585,6 +1771,23 @@ html {
     display: none;
   }
 
+  .module-signal .speaker {
+    grid-template-columns: minmax(0, 1fr) 80px;
+    min-height: 108px;
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .module-signal .speaker-grill,
+  .speaker-pulse {
+    min-height: 90px;
+  }
+
+  .module-signal .speaker-led {
+    width: 40px;
+    height: 40px;
+  }
+
   .debrief-result-heading {
     padding-right: 57px;
   }
@@ -1619,6 +1822,28 @@ html {
 
   .team-radio-ticker {
     border: 1px solid CanvasText;
+  }
+
+  .module-signal .speaker,
+  .module-signal .speaker-grill,
+  .speaker-pulse {
+    border: 2px solid CanvasText;
+  }
+
+  .module-signal .speaker-led {
+    border-color: CanvasText;
+    background: Canvas;
+    box-shadow: none;
+  }
+
+  .module-signal .speaker-led.is-on {
+    outline: 4px solid Highlight;
+    background: Highlight;
+  }
+
+  .module-signal .speaker.is-beeping .speaker-pulse-label {
+    color: HighlightText;
+    background: Highlight;
   }
 }
 

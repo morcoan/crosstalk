@@ -1,6 +1,6 @@
 # CROSSTALK visual credits
 
-CROSSTALK's v1.4–v1.4.2 workbench illustrations, textures, stamps, diagrams and interface artwork are original project assets.
+CROSSTALK's v1.4–v1.4.3 workbench illustrations, textures, stamps, diagrams and interface artwork are original project assets.
 
 Bundled typefaces:
 

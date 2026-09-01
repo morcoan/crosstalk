@@ -48,6 +48,11 @@ Kit open as a readable ring binder and two-pane tool roll. On phones, the case f
 accessible snap tray instead of a several-screen stack. Mission logic and WebMCP contracts remain
 unchanged.
 
+Version 1.4.3 makes the last mission's human-only audio channel equally readable in muted play. The
+SIGNAL TX now has a large labeled pulse lamp and a reacting speaker grille synchronized to every
+short and long beep, with a rendered-state regression test to prevent an invisible cue from shipping
+again. The puzzle, timing table and agent tool contract are unchanged.
+
 The visual system uses original code-drawn paper, blueprint and bench textures plus three bundled
 OFL type families—Barlow Condensed, B612 and Caveat—with full attribution in
 [`CREDITS.md`](CREDITS.md). It makes no font, image or telemetry request at runtime.
@@ -102,7 +107,7 @@ cooperative, human-in-the-loop workflow the WebMCP explainer describes; CROSSTAL
 *fun enough to practice*.
 
 <p align="center">
-  <img src="docs/mission3.png" alt="Mission SILENT FREQUENCY — four modules, activity feed narrating agent tool calls" width="100%">
+  <img src="docs/mission3.png" alt="Mission SILENT FREQUENCY — four modules with the SIGNAL TX visual beep lamp illuminated" width="100%">
 </p>
 
 ## 🕹 How to play

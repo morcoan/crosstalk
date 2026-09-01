@@ -46,8 +46,8 @@ await page.screenshot({ path: "scripts/shots/briefing.png" });
 
 await page.click(".btn-arm");
 await page.waitForSelector(".module-grid");
-// let the signal module tick + cut a wrong-ish wire for drama? Just capture.
-await page.waitForTimeout(1200);
+// Capture the real illuminated pulse so the README demonstrates the muted-play cue.
+await page.waitForSelector('.speaker-led.is-on', { timeout: 5000 });
 await page.screenshot({ path: "scripts/shots/mission3.png", fullPage: true });
 
 // manual drawer

@@ -42,6 +42,8 @@ export class SignalModule implements GameModule {
   private events: { start: number; dur: number }[] = [];
   private cycleLen = 0;
   private ledEl: HTMLElement | null = null;
+  private speakerEl: HTMLElement | null = null;
+  private pulseLabelEl: HTMLElement | null = null;
   private txEl: HTMLElement | null = null;
   private beeped = new Set<number>();
   private root: HTMLElement | null = null;
@@ -115,19 +117,26 @@ export class SignalModule implements GameModule {
   tick(dt: number): void {
     if (this.status === "solved" || !this.ctx.missionLive()) return;
     this.cycleT = (this.cycleT + dt) % this.cycleLen;
-    let led = false;
-    this.events.forEach((ev, i) => {
+    let activePulse: { dur: number } | null = null;
+    for (let i = 0; i < this.events.length; i++) {
+      const ev = this.events[i];
       const within = this.cycleT >= ev.start && this.cycleT < ev.start + ev.dur;
       if (within) {
-        led = true;
+        activePulse = ev;
         if (!this.beeped.has(i)) {
           this.beeped.add(i);
           sfx.beep(ev.dur > 200);
         }
       }
-    });
+    }
     if (this.cycleT < this.events[0].start) this.beeped.clear();
-    this.ledEl?.classList.toggle("is-on", led);
+    const beeping = activePulse !== null;
+    const pulseKind = activePulse && activePulse.dur > 200 ? "long" : activePulse ? "short" : "idle";
+    this.ledEl?.classList.toggle("is-on", beeping);
+    this.ledEl?.classList.toggle("is-long", pulseKind === "long");
+    this.speakerEl?.classList.toggle("is-beeping", beeping);
+    if (this.speakerEl) this.speakerEl.dataset.pulse = pulseKind;
+    if (this.pulseLabelEl) this.pulseLabelEl.textContent = beeping ? "BEEP" : "LISTEN";
   }
 
   render(root: HTMLElement): void {
@@ -137,9 +146,13 @@ export class SignalModule implements GameModule {
     wrap.className = "signal";
     wrap.innerHTML = `
       <div class="signal-row">
-        <div class="speaker" aria-label="speaker">
-          <span class="speaker-led" data-role="led"></span>
-          <span class="speaker-grill">${"<i></i>".repeat(6)}</span>
+        <div class="speaker" data-role="signal-speaker" data-pulse="idle" role="img" aria-label="Speaker with visual beep indicator. Watch the large lamp for the short and long beep rhythm.">
+          <span class="speaker-grill" aria-hidden="true">${"<i></i>".repeat(6)}</span>
+          <span class="speaker-pulse" aria-hidden="true">
+            <span class="speaker-pulse-caption">VISUAL BEEP</span>
+            <span class="speaker-led" data-role="led"></span>
+            <strong class="speaker-pulse-label" data-role="pulse-label">LISTEN</strong>
+          </span>
         </div>
         <div class="signal-dial">
           <div class="dial-label">FREQ DIAL <span class="seized">SEIZED — SERVO ONLY</span></div>
@@ -157,10 +170,12 @@ export class SignalModule implements GameModule {
     hint.textContent =
       this.status === "solved"
         ? "Handshake accepted."
-        : "Listen to the beep loop (LED pulses with it). Your agent must seat the dial before you transmit.";
+        : "Listen to the beep loop or watch the large VISUAL BEEP lamp. Your agent must seat the dial before you transmit.";
     wrap.appendChild(hint);
     root.appendChild(wrap);
+    this.speakerEl = wrap.querySelector('[data-role="signal-speaker"]');
     this.ledEl = wrap.querySelector('[data-role="led"]');
+    this.pulseLabelEl = wrap.querySelector('[data-role="pulse-label"]');
     this.txEl = wrap.querySelector('[data-role="tx"]');
     void this.txEl;
   }

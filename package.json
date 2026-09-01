@@ -1,7 +1,7 @@
 {
   "name": "crosstalk",
   "private": true,
-  "version": "1.4.2",
+  "version": "1.4.3",
   "type": "module",
   "description": "A cooperative defusal game for one human and one AI agent, built on WebMCP.",
   "license": "MIT",

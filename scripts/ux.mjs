@@ -380,6 +380,52 @@ try {
   const defaults = await boot({ width: 1280, height: 900 });
   await defaults.page.locator(".mission-card").nth(2).click();
   await defaults.page.locator(".btn-arm").click();
+  await defaults.page.waitForSelector('[data-role="signal-speaker"]');
+  await defaults.page.waitForFunction(() => document.querySelector('[data-role="signal-speaker"]')?.getAttribute("data-pulse") === "idle");
+  const signalOff = await defaults.page.evaluate(() => {
+    const speaker = document.querySelector('[data-role="signal-speaker"]');
+    const lamp = document.querySelector('.speaker-led');
+    const label = document.querySelector('[data-role="pulse-label"]');
+    const style = lamp ? getComputedStyle(lamp) : null;
+    const rect = lamp?.getBoundingClientRect();
+    return {
+      accessibleName: speaker?.getAttribute("aria-label") ?? "",
+      label: label?.textContent?.trim() ?? "",
+      width: rect?.width ?? 0,
+      height: rect?.height ?? 0,
+      background: style?.backgroundImage ?? "",
+      shadow: style?.boxShadow ?? ""
+    };
+  });
+  await defaults.page.waitForFunction(() => document.querySelector('[data-role="signal-speaker"]')?.getAttribute("data-pulse") !== "idle", null, { timeout: 5000 });
+  const signalOn = await defaults.page.evaluate(() => {
+    const speaker = document.querySelector('[data-role="signal-speaker"]');
+    const lamp = document.querySelector('.speaker-led');
+    const label = document.querySelector('[data-role="pulse-label"]');
+    const meter = document.querySelector('.speaker-grill i');
+    const style = lamp ? getComputedStyle(lamp) : null;
+    const meterStyle = meter ? getComputedStyle(meter) : null;
+    return {
+      pulse: speaker?.getAttribute("data-pulse") ?? "idle",
+      label: label?.textContent?.trim() ?? "",
+      background: style?.backgroundImage ?? "",
+      shadow: style?.boxShadow ?? "",
+      transform: style?.transform ?? "",
+      meterAnimation: meterStyle?.animationName ?? "none",
+      meterOpacity: Number(meterStyle?.opacity ?? 0)
+    };
+  });
+  check(signalOff.width >= 40 && signalOff.height >= 40, "SIGNAL TX uses a large visible pulse lamp instead of a status pinprick");
+  check(/short and long beep rhythm/i.test(signalOff.accessibleName) && signalOff.label === "LISTEN", "SIGNAL TX explains the visual rhythm indicator");
+  check(
+    signalOn.label === "BEEP" &&
+      ["short", "long"].includes(signalOn.pulse) &&
+      signalOn.background !== signalOff.background &&
+      signalOn.shadow !== signalOff.shadow &&
+      signalOn.transform !== "none",
+    "SIGNAL TX pulse has an unmistakably different rendered on state"
+  );
+  check(signalOn.meterAnimation === "signal-meter-kick" && signalOn.meterOpacity >= 0.9, "SIGNAL TX speaker grille visibly reacts while a beep is sounding");
   await defaults.page.locator('[data-role="btn-console"]:visible').click();
   await defaults.page.locator('.console-tool[data-tool-name="set_transmitter_frequency"]').click();
   check(await defaults.page.locator('.console-fields input[type="number"]').inputValue() === "3.522", "Agent Kit provides a valid example frequency by default");
