@@ -1,9 +1,10 @@
 import { el, esc, copyText, store } from "../lib/dom";
+import { on } from "../lib/bus";
 import { armDevice, backToMenu, bestFor, fmtClock, game, goToBriefing, MISSIONS, rating } from "../game/state";
 import { loadTrainingRecord, recommendMission, trainingTotals } from "../game/training";
-import { webmcpAvailable } from "../webmcp/context";
-import { renderDevice } from "./device";
-import { toggleDrawer } from "./hud";
+import { webmcpHealth } from "../webmcp/context";
+import { disposeDeviceUi, renderDevice } from "./device";
+import { resetHudForScreenTransition, toggleDrawer } from "./hud";
 import { icon, missionPresentation } from "./presentation";
 
 export const AGENT_PROMPT =
@@ -14,24 +15,56 @@ export const AGENT_PROMPT =
 const REVIEW_PROMPT =
   "Call review_last_session. Tell us one observable thing we did well, one thing to improve, and which drill to run next. Then offer to file our field report.";
 
+let disposeScreenSubscription: (() => void) | null = null;
+
+function disposeScreenListener(): void {
+  disposeScreenSubscription?.();
+  disposeScreenSubscription = null;
+}
+
 export function renderScreen(root: HTMLElement): void {
+  disposeScreenListener();
+  resetHudForScreenTransition();
+  disposeDeviceUi();
   root.innerHTML = "";
-  switch (game.screen) {
-    case "menu":
-      return renderMenu(root);
-    case "briefing":
-      return renderBriefing(root);
-    case "active":
-      return renderDevice(root);
-    case "debrief":
-      return renderDebrief(root);
+  try {
+    switch (game.screen) {
+      case "menu":
+        renderMenu(root);
+        break;
+      case "briefing":
+        renderBriefing(root);
+        break;
+      case "active":
+        renderDevice(root);
+        break;
+      case "debrief":
+        renderDebrief(root);
+        break;
+    }
+  } catch (error) {
+    console.error("[crosstalk] screen render failed", error);
+    disposeScreenListener();
+    disposeDeviceUi();
+    const recovery = el("section", "screen render-recovery");
+    recovery.innerHTML = `<div class="brief-docket"><div class="brief-kicker">FIELD DISPLAY RECOVERY</div>
+      <h1 data-screen-title tabindex="-1">DISPLAY INTERRUPTED</h1>
+      <p>The equipment panel hit an unexpected fault. Your mission state was isolated; return to the mission board to recover safely.</p></div>`;
+    const recover = el("button", "btn btn-arm", "RETURN TO MISSION SELECT");
+    recover.addEventListener("click", () => backToMenu());
+    recovery.appendChild(recover);
+    root.replaceChildren(recovery);
   }
+  window.scrollTo(0, 0);
+  requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+    root.querySelector<HTMLElement>("[data-screen-title]")?.focus({ preventScroll: true });
+  });
 }
 
 /* ------------------------------ MENU ------------------------------ */
 
 function renderMenu(root: HTMLElement): void {
-  const linked = webmcpAvailable();
   const wrap = el("div", "screen menu");
   wrap.innerHTML = `<span class="bench-mark mark-a">MEASURE TWICE</span><span class="bench-mark mark-b">↗ keep the line open</span>`;
 
@@ -41,27 +74,48 @@ function renderMenu(root: HTMLElement): void {
   hero.innerHTML = `
     <span class="placard-tape tape-left"></span><span class="placard-tape tape-right"></span>
     <div class="hero-eyebrow">FIELD COMMUNICATION EXERCISE / ISSUE 04</div>
-    <h1 class="title">CROSS<span>TALK</span></h1>
+    <h1 class="title" data-screen-title tabindex="-1">CROSS<span>TALK</span></h1>
     <p class="tagline">You see it. Your agent knows it. <b>Talk fast.</b></p>
     <p class="subline">A cooperative bomb-defusal game for one human and one AI teammate.
     Neither side has the whole picture.</p>
     <div class="hero-scribble">one device / two senses</div>`;
   topScene.appendChild(hero);
 
-  const link = el("section", `linkcard ${linked ? "is-ok" : "is-warn"}`);
-  link.innerHTML = linked
-    ? `<span class="paper-clip"></span><span class="note-pin"></span><div class="linkcard-head">${icon("link")}<span><b>LINE TO AGENT: OPEN</b><small>Your teammate has the manual, scanner and remote controls.</small></span></div>
-       <p>Copy the briefing into your agent chat, then choose a mission.</p>
-       <details class="connection-help"><summary>Connection help and technical details</summary>
-       <p>CROSSTALK exposes its equipment through WebMCP. If no agent chat is attached, use <b>AGENT KIT</b>
-       to operate the same tools by hand, or connect through the
-       <a href="https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd"
-       target="_blank" rel="noreferrer">Model Context Tool Inspector</a>.</p></details>`
-    : `<span class="paper-clip"></span><span class="note-pin"></span><div class="linkcard-head">${icon("link")}<span><b>LINE TO AGENT: CLOSED</b><small>Best experienced as a two-player communication game.</small></span></div>
-       <p>Open CROSSTALK in ChatGPT's in-app browser or a WebMCP-enabled Chrome browser. Prefer to explore first?
-       Open the <b>FIELD MANUAL</b> and play solo.</p>
-       <details class="connection-help"><summary>How to enable the agent link</summary><p>Chrome 149+: enable
-       <code>chrome://flags/#enable-webmcp-testing</code>, relaunch, and return here.</p></details>`;
+  const link = el("section", "linkcard");
+  link.innerHTML = `<span class="paper-clip"></span><span class="note-pin"></span>
+    <div class="linkcard-head">${icon("link")}<span><b data-role="connection-title" aria-live="polite" aria-atomic="true"></b><small data-role="connection-detail"></small></span></div>
+    <p data-role="connection-copy"></p>
+    <details class="connection-help"><summary>Connection help and technical details</summary>
+      <p>CROSSTALK exposes its equipment through WebMCP. Wait for the header to show <b>READY</b> before relying on the agent tool line. If it is unavailable or degraded, <b>AGENT KIT</b> invokes the same handlers locally. Chrome 149+ users can enable <code>chrome://flags/#enable-webmcp-testing</code>, relaunch, and return here. The <a href="https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd" target="_blank" rel="noreferrer">Model Context Tool Inspector</a> can also inspect the page tools.</p>
+    </details>`;
+  const connectionTitle = link.querySelector<HTMLElement>('[data-role="connection-title"]')!;
+  const connectionDetail = link.querySelector<HTMLElement>('[data-role="connection-detail"]')!;
+  const connectionCopy = link.querySelector<HTMLElement>('[data-role="connection-copy"]')!;
+  const paintConnection = (): void => {
+    const health = webmcpHealth();
+    link.classList.toggle("is-ok", health.mode === "ready");
+    link.classList.toggle("is-warn", health.mode === "local-only" || health.mode === "connecting");
+    link.classList.toggle("is-error", health.mode === "degraded");
+    if (health.mode === "ready") {
+      connectionTitle.textContent = "WEBMCP TOOL LINE: READY";
+      connectionDetail.textContent = `${health.ready} page tools are registered. An agent still needs this page and its briefing.`;
+      connectionCopy.innerHTML = "Copy the briefing into your agent chat, then choose a mission. Tool readiness does not mean a teammate has joined yet.";
+    } else if (health.mode === "connecting") {
+      connectionTitle.textContent = "WEBMCP TOOL LINE: CONNECTING";
+      connectionDetail.textContent = `${health.ready} of ${health.desired} page tools are registered.`;
+      connectionCopy.innerHTML = "Choose a mission now, but wait for <b>READY</b> before relying on agent tools. <b>AGENT KIT</b> remains available locally.";
+    } else if (health.mode === "degraded") {
+      connectionTitle.textContent = "WEBMCP TOOL LINE: DEGRADED";
+      connectionDetail.textContent = `${health.ready} of ${health.desired} page tools are ready; ${health.failed} failed to register.`;
+      connectionCopy.innerHTML = "Registration will retry. Use <b>AGENT KIT</b> locally until the header reports <b>READY</b>.";
+    } else {
+      connectionTitle.textContent = "SOLO TOOL LINE: READY";
+      connectionDetail.textContent = "WebMCP transport is unavailable here, but every mission remains playable.";
+      connectionCopy.innerHTML = "Open the <b>FIELD MANUAL</b> or <b>AGENT KIT</b> to play locally, or reopen CROSSTALK in a WebMCP-enabled browser for co-op.";
+    }
+  };
+  paintConnection();
+  disposeScreenSubscription = on("tools", paintConnection);
   const promptRow = el("div", "prompt-row");
   const promptBox = el("details", "prompt-box");
   promptBox.innerHTML = `<summary>Preview agent briefing</summary><code>${esc(AGENT_PROMPT)}</code>`;
@@ -86,7 +140,7 @@ function renderMenu(root: HTMLElement): void {
     <span class="punch-hole punch-a"></span><span class="punch-hole punch-b"></span>
     <div class="dossier-progress"><span class="dossier-kicker">FIELD RECORD / PUNCH CARD</span>
       <b>${totals.completed}/${MISSIONS.length} MISSIONS CLEARED</b>
-      <span class="progress-track"><i style="width:${(totals.completed / MISSIONS.length) * 100}%"></i></span></div>
+      <span class="progress-track" role="progressbar" aria-label="Missions cleared" aria-valuemin="0" aria-valuemax="${MISSIONS.length}" aria-valuenow="${totals.completed}"><i style="width:${(totals.completed / MISSIONS.length) * 100}%"></i></span></div>
     <div class="dossier-stats"><b>${totals.cleanWins}</b> clean clear${totals.cleanWins === 1 ? "" : "s"}
       <span>·</span> <b>${totals.attempts}</b> completed run${totals.attempts === 1 ? "" : "s"}</div>
     <div class="dossier-next"><span>RECOMMENDED</span><b>${recommended.codename}</b></div>`;
@@ -121,11 +175,11 @@ function renderMenu(root: HTMLElement): void {
 
   const how = el("section", "howto");
   how.innerHTML = `
-    <div class="how-col"><span class="how-step">1</span>${icon("eye")}<h3>Look</h3><p>Read the colors, glyphs, gauges and sounds your agent cannot sense.</p></div>
+    <div class="how-col"><span class="how-step">1</span>${icon("eye")}<h2>Look</h2><p>Read the colors, glyphs, gauges and sounds your agent cannot sense.</p></div>
     <span class="how-arrow">→</span>
-    <div class="how-col"><span class="how-step">2</span>${icon("radio")}<h3>Call it out</h3><p>Your agent checks the manual and operates equipment on its side.</p></div>
+    <div class="how-col"><span class="how-step">2</span>${icon("radio")}<h2>Call it out</h2><p>Your agent checks the manual and operates equipment on its side.</p></div>
     <span class="how-arrow">→</span>
-    <div class="how-col"><span class="how-step">3</span>${icon("hand")}<h3>Commit</h3><p>Confirm the instruction, then press, cut or transmit before time runs out.</p></div>`;
+    <div class="how-col"><span class="how-step">3</span>${icon("hand")}<h2>Commit</h2><p>Confirm the instruction, then press, cut or transmit before time runs out.</p></div>`;
   wrap.appendChild(how);
 
   const foot = el("footer", "menu-foot");
@@ -153,7 +207,7 @@ function renderBriefing(root: HTMLElement): void {
       <span class="paper-clip brief-clip"></span><span class="brief-tape"></span>
       <div class="brief-kicker">FIELD ASSIGNMENT · ${missionPresentation[m.id].threat} · ${missionPresentation[m.id].file}</div>
       <div class="brief-heading"><div class="brief-insignia">${icon(missionPresentation[m.id].icon)}</div>
-        <div><h2 class="brief-name">${m.codename}</h2><div class="brief-meta">${m.modules.length} MODULE${m.modules.length === 1 ? "" : "S"} · FUSE ${fmtClock(m.seconds * 1000)} · 3 STRIKES</div></div></div>
+        <div><h1 class="brief-name" data-screen-title tabindex="-1">${m.codename}</h1><div class="brief-meta">${m.modules.length} MODULE${m.modules.length === 1 ? "" : "S"} · FUSE ${fmtClock(m.seconds * 1000)} · 3 STRIKES</div></div></div>
       <p class="brief-text">${m.brief}</p>
       <div class="brief-modules">${m.modules.map((kind) => `<span>${kind.replace("signal", "signal tx").toUpperCase()}</span>`).join("")}</div>
     </div>
@@ -161,13 +215,23 @@ function renderBriefing(root: HTMLElement): void {
       <div class="human-note">${icon("eye")}<span><b>YOUR SIDE</b>Describe what you see and hear. Perform the physical actions.</span></div>
       <div class="agent-note">${icon("wrench")}<span><b>AGENT SIDE</b>Read the manual, scan the device and operate remote servos.</span></div>
     </div>`;
-  const tip = el(
-    "div",
-    "brief-tip",
-    webmcpAvailable()
-      ? `Before arming, tell your agent: <b>“Brief us for ${m.codename}.”</b> Start the clock when both of you are ready.`
-      : `Solo mode: open the <b>FIELD MANUAL</b> before arming. The clock starts immediately.`
-  );
+  const tip = el("div", "brief-tip");
+  tip.setAttribute("role", "status");
+  tip.setAttribute("aria-atomic", "true");
+  const paintBriefingStatus = (): void => {
+    const health = webmcpHealth();
+    if (health.mode === "ready") {
+      tip.innerHTML = `Before arming, tell your agent: <b>“Brief us for ${m.codename}.”</b> Start the clock when both of you are ready.`;
+    } else if (health.mode === "connecting") {
+      tip.innerHTML = `WebMCP is connecting (${health.ready}/${health.desired} tools ready). Wait for <b>READY</b>, or open <b>AGENT KIT</b>, before arming.`;
+    } else if (health.mode === "degraded") {
+      tip.innerHTML = `WebMCP is degraded (${health.failed} tool${health.failed === 1 ? "" : "s"} failed). Use <b>AGENT KIT</b> locally, or wait for registration to recover, before arming.`;
+    } else {
+      tip.innerHTML = `Solo mode: open the <b>FIELD MANUAL</b> or <b>AGENT KIT</b> before arming. The clock starts immediately.`;
+    }
+  };
+  paintBriefingStatus();
+  disposeScreenSubscription = on("tools", paintBriefingStatus);
   wrap.appendChild(tip);
 
   const row = el("div", "brief-actions");
@@ -192,7 +256,29 @@ interface FieldReport {
 
 function loadReports(): FieldReport[] {
   try {
-    return JSON.parse(store.get("crosstalk.reports") ?? "[]") as FieldReport[];
+    const parsed: unknown = JSON.parse(store.get("crosstalk.reports") ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row))
+      .flatMap((row) => {
+        if (
+          typeof row.callsign !== "string" ||
+          typeof row.note !== "string" ||
+          typeof row.mission !== "string" ||
+          typeof row.result !== "string" ||
+          typeof row.when !== "number" ||
+          !Number.isSafeInteger(row.when) ||
+          row.when < 0
+        ) {
+          return [];
+        }
+        const callsign = row.callsign.trim().slice(0, 24);
+        const mission = row.mission.trim().slice(0, 80);
+        const result = row.result.trim().slice(0, 80);
+        if (!callsign || !mission || !result) return [];
+        return [{ callsign, note: row.note.trim().slice(0, 140), mission, result, when: row.when }];
+      })
+      .slice(0, 12);
   } catch {
     return [];
   }
@@ -212,19 +298,19 @@ function renderDebrief(root: HTMLElement): void {
   sheet.innerHTML = `
     <div class="report-number">AFTER-ACTION REPORT / ${d.serial}</div>
     <div class="debrief-stamp">${icon(win ? "shield" : "wire")}<span>${win ? "CLEARED" : "FAILED"}</span></div>
-    <div class="debrief-banner">${win ? "DEVICE DISARMED" : "DEVICE DETONATED"}</div>
+    <h1 class="debrief-banner" data-screen-title tabindex="-1">${win ? "DEVICE DISARMED" : "DEVICE DETONATED"}</h1>
     <div class="debrief-sub">${d.mission.codename} · SERIAL ${d.serial}</div>
     <div class="debrief-stats">
-      <div class="stat"><span>${win ? fmtClock(d.msLeft) : "00:00"}</span><label>time left</label></div>
-      <div class="stat"><span>${d.strikes}/3</span><label>strikes</label></div>
-      <div class="stat"><span>${d.toolCalls}</span><label>team radio calls</label></div>
-      <div class="stat stat-rating"><span>${rating(d)}</span><label>field grade</label></div>
+      <div class="stat"><span>${win ? fmtClock(d.msLeft) : "00:00"}</span><small>time left</small></div>
+      <div class="stat"><span>${d.strikes}/3</span><small>strikes</small></div>
+      <div class="stat"><span>${d.toolCalls}</span><small>team radio calls</small></div>
+      <div class="stat stat-rating"><span>${rating(d)}</span><small>field grade</small></div>
     </div>`;
   board.appendChild(sheet);
   wrap.appendChild(board);
 
   const coaching = el("section", "coaching");
-  coaching.innerHTML = `<div>${icon("radio")}<span><h3>REVIEW THE RUN TOGETHER</h3>
+  coaching.innerHTML = `<div>${icon("radio")}<span><h2>REVIEW THE RUN TOGETHER</h2>
     <p>Ask your agent for one strength, one improvement and the best next drill. The review uses device events only—not your private conversation.</p></span></div>`;
   const coachingActions = el("div", "coaching-actions");
   const reviewBtn = el("button", "btn btn-primary", "COPY REVIEW REQUEST");
@@ -246,7 +332,7 @@ function renderDebrief(root: HTMLElement): void {
 
   // FIELD SKILLS — the impact thesis, demonstrated: name what the player just practiced.
   const skills = el("section", "skills");
-  skills.innerHTML = `<h3>SKILLS PRACTICED</h3>${skillLines(d, win)
+  skills.innerHTML = `<h2>SKILLS PRACTICED</h2>${skillLines(d, win)
     .map((s) => `<div class="skill-row"><span class="skill-medal">✓</span><span class="skill-name">${s[0]}</span><span class="skill-note">${s[1]}</span></div>`)
     .join("")}`;
   sheet.appendChild(skills);
@@ -268,18 +354,22 @@ function renderDebrief(root: HTMLElement): void {
   form.innerHTML = `
     <label for="callsign">TEAM CALLSIGN</label>
     <input id="callsign" name="callsign" maxlength="24" required
-      value="${esc(store.get("crosstalk.callsign") ?? "")}"
       toolparamdescription="Short team callsign, e.g. WIRE WOLVES">
     <label for="note">AFTER-ACTION NOTE</label>
     <input id="note" name="note" maxlength="140"
       toolparamdescription="One-line after-action note for the log">
     <button type="submit" class="btn btn-primary">FILE REPORT</button>`;
+  const callsignInput = form.querySelector<HTMLInputElement>("#callsign")!;
+  callsignInput.value = (store.get("crosstalk.callsign") ?? "").slice(0, 24);
+  const reportStatus = el("p", "report-status");
+  reportStatus.setAttribute("role", "status");
+  reportStatus.setAttribute("aria-live", "polite");
   const logEl = el("div", "squad-log");
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const fd = new FormData(form);
-    const callsign = String(fd.get("callsign") ?? "").trim() || "UNNAMED SQUAD";
-    const note = String(fd.get("note") ?? "").trim();
+    const callsign = (String(fd.get("callsign") ?? "").trim() || "UNNAMED SQUAD").slice(0, 24);
+    const note = String(fd.get("note") ?? "").trim().slice(0, 140);
     const report: FieldReport = {
       callsign,
       note,
@@ -288,19 +378,26 @@ function renderDebrief(root: HTMLElement): void {
       when: Date.now()
     };
     const all = [report, ...loadReports()].slice(0, 12);
-    store.set("crosstalk.reports", JSON.stringify(all));
-    store.set("crosstalk.callsign", callsign);
-    paintLog();
+    const persisted =
+      store.set("crosstalk.reports", JSON.stringify(all)) &&
+      store.set("crosstalk.callsign", callsign);
+    reportStatus.textContent = persisted
+      ? `Report filed for ${callsign}.`
+      : "Report is visible for this session, but browser storage is unavailable.";
+    paintLog(persisted ? loadReports() : all);
     const ev = e as SubmitEvent & { agentInvoked?: boolean; respondWith?(p: Promise<unknown>): void };
     if (ev.agentInvoked && typeof ev.respondWith === "function") {
-      ev.respondWith(Promise.resolve(`Field report filed for ${callsign}: "${note}" (${report.result}).`));
+      ev.respondWith(Promise.resolve(
+        persisted
+          ? `Field report filed for ${callsign}: "${note}" (${report.result}).`
+          : `Field report accepted for ${callsign}, but browser storage is unavailable; it will not survive a reload.`
+      ));
     }
   });
-  const paintLog = (): void => {
-    const all = loadReports();
-    logEl.innerHTML = all.length
+  const paintLog = (rows = loadReports()): void => {
+    logEl.innerHTML = rows.length
       ? `<h4>SQUAD LOG</h4>` +
-        all
+        rows
           .map(
             (r) =>
               `<div class="log-row"><b>${esc(r.callsign)}</b> · ${esc(r.mission)} · ${esc(r.result)}${
@@ -311,6 +408,7 @@ function renderDebrief(root: HTMLElement): void {
       : "";
   };
   paintLog();
+  form.appendChild(reportStatus);
   reportWrap.append(form, logEl);
   sheet.appendChild(reportWrap);
 
@@ -326,11 +424,12 @@ function renderDebrief(root: HTMLElement): void {
   // Console/tools hint after a loss
   if (!win) {
     const hint = el(
-      "div",
+      "button",
       "debrief-hint",
-      `Tip: your agent could have checked <b>get_device_state</b> mid-mission — open TOOLS to see everything it can do.`
+      `Tip: your agent could have checked <b>get_device_state</b> mid-mission — open AGENT KIT to see everything it can do.`
     );
-    hint.addEventListener("click", () => toggleDrawer("console"));
+    hint.type = "button";
+    hint.addEventListener("click", (event) => toggleDrawer("console", event.currentTarget as HTMLElement));
     wrap.appendChild(hint);
   }
 }

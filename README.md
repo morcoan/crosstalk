@@ -37,6 +37,10 @@ inside one scarred equipment chassis; TEAM RADIO is a field transceiver that pri
 onto a receipt. The mission rules did not change. The interface explains them through recognizable
 objects, material contrast and spatial composition instead of generic cards and badges.
 
+Version 1.4.1 keeps those rules and materials intact while hardening the fuse against background-tab
+pauses and stale callbacks, making WebMCP registration retry and recover truthfully, validating local
+records, and tightening keyboard, modal, reflow, contrast and cross-browser behavior.
+
 The visual system uses original code-drawn paper, blueprint and bench textures plus three bundled
 OFL type families—Barlow Condensed, B612 and Caveat—with full attribution in
 [`CREDITS.md`](CREDITS.md). It makes no font, image or telemetry request at runtime.
@@ -188,26 +192,33 @@ Implementation details that make the agent a *good teammate*:
 
 ## ✅ Verified against the real thing
 
-Four layers of proof, all runnable from this repo:
+Six release gates, all runnable from this repo:
 
-1. **`npm test`** — 18 unit tests guard the manual↔logic pact and versioned dossier behavior (every
+1. **`npm test`** — 27 unit and fault-injection tests guard the manual↔logic pact, fuse/session
+   ownership, WebMCP registration recovery, strict persistence and versioned dossier behavior (every
    generated wire layout resolves to a legal cut; exactly one keypad column matches any pick; echo
    rules only reference earlier stages; corrupt/future training records fail closed).
-2. **`npm run smoke`** — headless Chromium plays **all three missions to zero-strike disarms**
+2. **`npm run build`** — type-checks the game and produces the exact static `dist/` artifact that
+   the browser and deployment checks consume.
+3. **`npm run smoke`** — headless Chromium plays **all three missions to zero-strike disarms**
    through a stubbed `document.modelContext`: the “agent” half only reads tool text (manual,
    scans, logs) and calls actuators; the “human” half only reads the DOM and clicks. It even
    transcribes the SIGNAL TX beep rhythm by watching the speaker LED.
-3. **`npm run native`** — launches Chromium with `--enable-features=WebMCPTesting` (the runtime
+4. **`npm run native`** — launches Chromium with `--enable-features=WebMCPTesting` (the runtime
    behind the Chrome flag) and verifies against the **native WebMCP implementation**: real
    `registerTool` schema validation, native `getTools()`/`executeTool()` driving a full mission win,
    `toolchange` events on module solves, and the declarative debrief form appearing as a native tool.
-4. **`npm run ux`** — checks the playable hierarchy and interaction path at 1440px, 390px and 320px:
-   keyboard mission selection, explicit role ownership, live next-action feedback, minimum control
-   sizes, sticky mobile timer, utility-menu state, horizontal overflow and reduced motion.
+5. **`npm run ux`** — checks the playable hierarchy and interaction path at 1440px, 390px and 320px:
+   Axe scans, modal focus/return, keyboard continuity, schema-driven controls, explicit role ownership,
+   live next-action feedback, minimum control sizes, exact reflow, reduced motion and forced colors.
+6. **`npm run xbrowser`** — serves the built artifact on an ephemeral loopback port and verifies the
+   no-agent path in Firefox and WebKit, failing on page, console, request or HTTP errors.
 
-All four layers run in CI on every push — that's the `verify` badge above. A scheduled job re-verifies
-the **deployed site** daily, and [`scripts/native-live-deep.mjs`](scripts/native-live-deep.mjs)
-plays missions 2 and 3 to zero-strike disarms on the production origin through the native API.
+Every pull request must clear all six gates, without deploying. Main-branch deployments use the same
+gate set before the Pages artifact can be published, then immediately run a fast native WebMCP check
+against the resulting production URL. The separate `verify` workflow runs the deep production check
+daily; [`scripts/native-live-deep.mjs`](scripts/native-live-deep.mjs) plays missions 2 and 3 to
+zero-strike disarms on the production origin through the native API.
 
 ```
 ok  mission 3 disarmed (all five module types solved)
@@ -219,13 +230,14 @@ NATIVE WEBMCP VERIFICATION PASSED
 ## 🏗 Development
 
 ```bash
-npm install
+npm ci
 npm run dev      # vite dev server
 npm test         # rule/manual invariants (vitest)
-npm run build    # type-check + bundle (~38 KB gzipped, zero runtime deps)
+npm run build    # type-check + production bundle (zero runtime deps)
 npm run smoke    # full co-op playthrough, stubbed WebMCP (playwright)
 npm run native   # verification against Chromium's native WebMCP
 npm run ux       # desktop/mobile interaction and accessibility assertions
+npm run xbrowser # Firefox/WebKit no-agent check against the built artifact
 ```
 
 Everything is client-side: no servers, no accounts, no analytics. Missions are seeded — every armed

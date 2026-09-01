@@ -75,6 +75,7 @@ export class RegulatorModule implements GameModule {
   }
 
   private nudge(direction: string, magnitude: string): string {
+    if (!this.ctx.missionLive()) throw new Error("This regulator control belongs to an expired device session.");
     if (this.status === "solved") return "The regulator is already locked.";
     if (direction !== "up" && direction !== "down") throw new Error('direction must be "up" or "down".');
     if (magnitude !== "coarse" && magnitude !== "fine") throw new Error('magnitude must be "coarse" or "fine".');
@@ -91,8 +92,10 @@ export class RegulatorModule implements GameModule {
   }
 
   private lock(): string {
+    if (!this.ctx.missionLive()) throw new Error("This regulator control belongs to an expired device session.");
     if (this.status === "solved") return "The regulator is already locked.";
-    const inside = this.value >= this.zoneLo && this.value <= this.zoneHi;
+    const visibleValue = Math.round(this.value);
+    const inside = visibleValue >= this.zoneLo && visibleValue <= this.zoneHi;
     sfx.click();
     if (inside) {
       this.status = "solved";
@@ -113,12 +116,14 @@ export class RegulatorModule implements GameModule {
   tick(dt: number): void {
     if (this.status === "solved" || !this.ctx.missionLive()) return;
     this.driftTimer += dt;
-    if (this.driftTimer >= 900) {
-      this.driftTimer = 0;
+    let changed = false;
+    while (this.driftTimer >= 900) {
+      this.driftTimer -= 900;
       if (this.ctx.rng.chance(0.15)) this.drift = -this.drift;
       this.value = clamp(this.value + this.drift, 1, 99);
-      this.ctx.update();
+      changed = true;
     }
+    if (changed) this.ctx.update();
   }
 
   render(root: HTMLElement): void {

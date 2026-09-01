@@ -1,5 +1,6 @@
 /** Automated interaction, hierarchy, target-size, and responsive checks. Run after `npm run build`. */
 import { chromium } from "playwright";
+import AxeBuilder from "@axe-core/playwright";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
@@ -47,8 +48,24 @@ async function overflow(page) {
     window.scrollTo(1_000_000, window.scrollY);
     const horizontalTravel = window.scrollX;
     window.scrollTo(0, window.scrollY);
-    return horizontalTravel;
+    return {
+      horizontalTravel,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth
+    };
   });
+}
+
+async function checkAxe(page, label) {
+  const result = await new AxeBuilder({ page }).analyze();
+  if (result.violations.length === 0) {
+    console.log(`  ok  ${label} has no automated accessibility violations`);
+    return;
+  }
+  for (const violation of result.violations) {
+    const targets = violation.nodes.slice(0, 3).flatMap((node) => node.target).join(", ");
+    failures.push(`${label}: ${violation.id} (${violation.impact ?? "unknown"}) ${targets}`);
+  }
 }
 
 async function smallestVisibleTarget(page, selector) {
@@ -69,26 +86,78 @@ try {
     return ["B612", "Barlow Condensed", "Caveat"].every((name) => document.fonts.check(`12px "${name}"`));
   });
   check(fonts, "all three bundled OFL typeface families load locally");
-  check((await overflow(desktop.page)) <= 1, "desktop has no horizontal overflow");
+  const desktopOverflow = await overflow(desktop.page);
+  check(desktopOverflow.horizontalTravel === 0 && desktopOverflow.scrollWidth === desktopOverflow.clientWidth, "desktop has exact zero horizontal overflow");
   check((await smallestVisibleTarget(desktop.page, "button")) >= 42, "desktop controls meet the 42px pointer-target floor");
+  check(await desktop.page.locator("h1").count() === 1, "menu exposes one clear h1");
+  await checkAxe(desktop.page, "menu");
+
+  const manualTrigger = desktop.page.locator('[data-role="btn-manual"]:visible');
+  await manualTrigger.focus();
+  await manualTrigger.click();
+  const manualDialog = desktop.page.getByRole("dialog", { name: /field manual/i });
+  check(await manualDialog.count() === 1, "field manual is announced as a named modal dialog");
+  check(await manualTrigger.getAttribute("aria-expanded") === "true", "field manual trigger exposes open state");
+  await desktop.page.waitForFunction(() => document.querySelector(".drawer")?.contains(document.activeElement) === true);
+  check(await desktop.page.evaluate(() => document.querySelector(".drawer")?.contains(document.activeElement) === true), "field manual moves focus inside the dialog");
+  const manualOverflow = await desktop.page.locator(".manual-text").evaluate((node) => ({
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth
+  }));
+  check(manualOverflow.scrollWidth <= manualOverflow.clientWidth + 1, "field manual text does not require horizontal scrolling");
+  await desktop.page.keyboard.press("Escape");
+  check(await manualTrigger.getAttribute("aria-expanded") === "false", "Escape closes the field manual");
+  check(await desktop.page.evaluate(() => document.activeElement?.getAttribute("data-role") === "btn-manual"), "closing the field manual restores trigger focus");
+
+  const kitTrigger = desktop.page.locator('[data-role="btn-console"]:visible');
+  await kitTrigger.click();
+  await desktop.page.locator('.console-tool[data-tool-name="consult_manual"]').click();
+  check(await desktop.page.locator(".console-fields select").count() === 1, "Agent Kit converts supported schemas into labeled controls");
+  check(await desktop.page.locator(".console-args").count() === 0, "Agent Kit avoids raw JSON for supported schemas");
+  await desktop.page.getByRole("button", { name: "Close Agent Kit" }).click();
 
   const firstMission = desktop.page.locator(".mission-card").first();
+  await desktop.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await firstMission.focus();
   await desktop.page.keyboard.press("Enter");
   await desktop.page.waitForSelector(".btn-arm");
+  await desktop.page.waitForTimeout(50);
+  check(await desktop.page.evaluate(() => window.scrollY === 0), "screen transition clears stale scroll position");
+  check(await desktop.page.locator("h1").count() === 1, "briefing exposes one clear h1");
   check(await desktop.page.locator(".brief-roles > div").count() === 2, "briefing separates human and agent ownership");
   await desktop.page.locator(".btn-arm").click();
   await desktop.page.waitForSelector(".wire-bay");
+  check(await desktop.page.locator("h1").count() === 1, "active mission exposes one clear h1");
   check(await desktop.page.locator(".device-chassis").count() === 1, "modules share one physical equipment chassis");
   check(await desktop.page.locator(".radio-shell + .printer-slot").count() === 1, "team radio prints through a visible paper-feed slot");
   check(await desktop.page.locator(".module-instruction").count() === 1, "live module exposes a single next-action cue");
   check(await desktop.page.locator(".feed-latest").count() === 1, "team radio promotes the latest event");
   check((await smallestVisibleTarget(desktop.page, ".wire")) >= 42, "physical wire controls remain easy to hit");
+  await checkAxe(desktop.page, "active mission");
   await desktop.context.close();
+
+  const keyboard = await boot({ width: 1280, height: 900 });
+  await keyboard.page.locator(".mission-card").nth(1).click();
+  await keyboard.page.locator(".btn-arm").click();
+  await keyboard.page.waitForSelector(".keypad .key");
+  const firstKey = keyboard.page.locator(".keypad .key").first();
+  await firstKey.focus();
+  await keyboard.page.keyboard.press("Enter");
+  check(await keyboard.page.evaluate(() => Boolean(document.activeElement?.closest(".module-keypad"))), "keypad keeps keyboard focus in the module after rerender");
+  await keyboard.context.close();
+
+  const defaults = await boot({ width: 1280, height: 900 });
+  await defaults.page.locator(".mission-card").nth(2).click();
+  await defaults.page.locator(".btn-arm").click();
+  await defaults.page.locator('[data-role="btn-console"]:visible').click();
+  await defaults.page.locator('.console-tool[data-tool-name="set_transmitter_frequency"]').click();
+  check(await defaults.page.locator('.console-fields input[type="number"]').inputValue() === "3.522", "Agent Kit provides a valid example frequency by default");
+  await defaults.context.close();
 
   for (const width of [390, 320]) {
     const mobile = await boot({ width, height: 844 });
-    check((await overflow(mobile.page)) <= 1, `${width}px layout has no horizontal overflow`);
+    const mobileOverflow = await overflow(mobile.page);
+    check(mobileOverflow.horizontalTravel === 0 && mobileOverflow.scrollWidth === mobileOverflow.clientWidth, `${width}px layout has exact zero horizontal overflow`);
     check((await smallestVisibleTarget(mobile.page, "button")) >= 44, `${width}px controls meet the 44px touch-target floor`);
     const utility = mobile.page.locator('[data-role="btn-utility"]');
     await utility.click();
@@ -109,6 +178,13 @@ try {
   });
   check(motion.transition === "0s" && motion.animation === "0s", "reduced-motion preference removes decorative movement");
   await reduced.context.close();
+
+  const forced = await browser.newContext({ viewport: { width: 390, height: 844 }, forcedColors: "active" });
+  const forcedPage = await forced.newPage();
+  await forcedPage.goto("http://127.0.0.1:4578/");
+  await forcedPage.waitForSelector(".mission-card");
+  check(await forcedPage.locator(".mission-card:visible").count() === 3, "forced-colors mode keeps every mission selectable");
+  await forced.close();
 } finally {
   await browser.close();
   server.close();

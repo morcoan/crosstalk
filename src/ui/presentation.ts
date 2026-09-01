@@ -25,7 +25,7 @@ export const missionPresentation: Record<string, { threat: string; flavor: strin
     flavor: "Learn the handoff",
     icon: "wire",
     file: "DRILL / 01",
-    note: "Start here. Learn to ask before you cut.",
+    note: "Practice the handoff. Learn to ask before you cut.",
     material: "manila"
   },
   "crossed-wires": {

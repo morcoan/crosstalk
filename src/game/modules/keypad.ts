@@ -75,6 +75,7 @@ export class KeypadModule implements GameModule {
   private order: string[];
   private progress = 0;
   private flashWrong = false;
+  private root: HTMLElement | null = null;
 
   constructor(private ctx: ModuleCtx) {
     const col = ctx.rng.int(0, KEYPAD_COLUMNS.length - 1);
@@ -101,6 +102,7 @@ export class KeypadModule implements GameModule {
   }
 
   render(root: HTMLElement): void {
+    this.root = root;
     root.innerHTML = "";
     const pad = document.createElement("div");
     pad.className = `keypad${this.flashWrong ? " flash-wrong" : ""}`;
@@ -111,6 +113,7 @@ export class KeypadModule implements GameModule {
       const key = document.createElement("button");
       key.className = `key${pressed ? " is-lit" : ""}`;
       key.disabled = pressed || this.status === "solved" || !this.ctx.missionLive();
+      key.dataset.glyph = id;
       key.setAttribute("aria-label", `key showing ${g.name} symbol`);
       key.innerHTML = `<span class="key-glyph">${g.char}</span><span class="key-name">${g.name}</span><span class="key-led"></span>`;
       key.addEventListener("click", () => this.press(id));
@@ -119,15 +122,19 @@ export class KeypadModule implements GameModule {
     root.appendChild(pad);
     const hint = document.createElement("div");
     hint.className = "hint";
+    hint.setAttribute("role", "status");
+    hint.setAttribute("aria-live", "polite");
+    hint.tabIndex = -1;
     hint.textContent =
       this.status === "solved"
         ? "Sequence accepted."
-        : "Press all four keys in the correct order. Wrong key resets the sequence.";
+        : `${this.progress} of 4 accepted. Press all four keys in the correct order; a wrong key resets the sequence.`;
     root.appendChild(hint);
   }
 
   private press(id: string): void {
     if (!this.ctx.missionLive() || this.status === "solved") return;
+    const pressedIndex = this.displayed.indexOf(id);
     sfx.click();
     this.ctx.humanAction();
     if (id === this.order[this.progress]) {
@@ -145,5 +152,13 @@ export class KeypadModule implements GameModule {
       this.ctx.strike("wrong glyph key pressed");
     }
     this.ctx.update();
+    if (!this.root?.isConnected) return;
+    if (this.status === "solved") {
+      this.root.querySelector<HTMLElement>('[role="status"]')?.focus({ preventScroll: true });
+      return;
+    }
+    const keys = [...this.root.querySelectorAll<HTMLButtonElement>(".key")];
+    const next = [...keys.slice(pressedIndex + 1), ...keys.slice(0, pressedIndex + 1)].find((key) => !key.disabled);
+    next?.focus({ preventScroll: true });
   }
 }

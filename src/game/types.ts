@@ -17,7 +17,13 @@ export interface ToolSpec {
   /** True for sensors/lookups that never mutate device state. */
   readOnly?: boolean;
   /** Executes the tool. Returns agent-facing text. Throwing = tool error text. */
-  execute(input: Record<string, unknown>): string | Promise<string>;
+  execute(input: Record<string, unknown>, options?: ToolExecutionOptions): string | Promise<string>;
+}
+
+/** Execution metadata supplied by WebMCP hosts. */
+export interface ToolExecutionOptions {
+  /** Fires when the calling agent cancels an execution. */
+  signal?: AbortSignal;
 }
 
 /** Services the device core hands to each module. */

@@ -1,6 +1,14 @@
 import { on } from "../lib/bus";
 import { manualSection, MANUAL_SECTIONS } from "../game/manual";
-import { fmtClock, game, goToBriefing, MISSIONS, missionLive, rating } from "../game/state";
+import {
+  detonationTransitionPending,
+  fmtClock,
+  game,
+  goToBriefing,
+  MISSIONS,
+  missionLive,
+  rating
+} from "../game/state";
 import { loadTrainingRecord, recommendMission, trainingTotals } from "../game/training";
 import type { ToolSpec } from "../game/types";
 import { syncTools } from "./context";
@@ -24,7 +32,9 @@ export function trainingRecordText(): string {
   const rows = MISSIONS.map((mission) => {
     const stats = record.missions[mission.id];
     if (!stats?.attempts) return `- ${mission.codename}: unattempted`;
-    const best = stats.wins ? `best ${stats.bestRating}, ${fmtClock(stats.bestMsLeft)} left` : "no disarm yet";
+    const best = stats.wins
+      ? `best grade ${stats.bestRating}; fastest clear ${fmtClock(stats.bestMsLeft)} left`
+      : "no disarm yet";
     return `- ${mission.codename}: ${stats.attempts} attempt(s), ${stats.wins} disarm(s), ${stats.cleanWins} clean; ${best}`;
   });
   return `CROSSTALK — LOCAL OPERATOR DOSSIER
@@ -201,6 +211,9 @@ const startMission: ToolSpec = {
   execute: (input) => {
     if (missionLive()) {
       throw new Error("A device is already live. Finish it (or let it end) before starting another mission.");
+    }
+    if (detonationTransitionPending()) {
+      throw new Error("The device is still detonating. Wait for the debrief before starting another mission.");
     }
     const m = goToBriefing(String(input.mission_id));
     return (

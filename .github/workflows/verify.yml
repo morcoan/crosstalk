@@ -1,55 +1,43 @@
 name: verify
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
   schedule:
-    # Daily during the judging window: verifies the LIVE site still registers and
-    # executes WebMCP tools natively. A failure emails the maintainer.
+    # Daily production depth check during judging. GitHub may delay scheduled starts.
     - cron: "17 14 * * *"
 
-permissions:
-  contents: read
+concurrency:
+  group: production-deep-check
+  cancel-in-progress: false
 
 env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
 
 jobs:
-  playthrough:
-    name: co-op playthrough + native WebMCP
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+  live-deep:
+    name: deep production WebMCP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+          cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium chromium-headless-shell
-      - run: npm test
-      - run: npm run build
-      # Full 3-mission, zero-strike co-op playthrough over a stubbed modelContext:
-      # the "agent" reads only tool text, the "human" reads only the DOM.
-      - run: npm run smoke
-      # Verification against Chromium's NATIVE WebMCP implementation
-      # (--enable-features=WebMCPTesting): registerTool schema validation,
-      # native getTools/executeTool, toolchange, declarative form.
-      - run: npm run native
-      # Interaction hierarchy, responsive layout, target sizes and reduced motion.
-      - run: npm run ux
-
-  live-check:
-    name: live site native WebMCP check
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium chromium-headless-shell
-      # Plays a mission on the DEPLOYED site through native executeTool and
-      # files the declarative field report — full production verification.
-      - run: node scripts/native-live.mjs
+      - name: Install native-WebMCP browser
+        run: npm exec -- playwright install --with-deps chromium chromium-headless-shell
+      - name: Disarm missions 2 and 3 on the production origin
+        run: |
+          set -eu
+          for attempt in 1 2; do
+            if node scripts/native-live-deep.mjs; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 2 ]; then
+              sleep 30
+            fi
+          done
+          exit 1

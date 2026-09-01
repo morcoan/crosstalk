@@ -12,9 +12,13 @@ import { icon, modulePresentation } from "./presentation";
 
 let unsubs: (() => void)[] = [];
 
-export function renderDevice(root: HTMLElement): void {
-  unsubs.forEach((u) => u());
+export function disposeDeviceUi(): void {
+  unsubs.forEach((unsubscribe) => unsubscribe());
   unsubs = [];
+}
+
+export function renderDevice(root: HTMLElement): void {
+  disposeDeviceUi();
 
   const d = game.device;
   if (!d) return;
@@ -27,18 +31,19 @@ export function renderDevice(root: HTMLElement): void {
   top.innerHTML = `
     <div class="devbar-left">
       <div class="dev-kicker">ACTIVE DEVICE</div>
-      <div class="dev-codename">${d.mission.codename}</div>
+      <h1 class="dev-codename" data-screen-title tabindex="-1">${d.mission.codename}</h1>
       <div class="dev-serial" title="Machine-readable only — your agent can scan_data_tag">
-        DATA TAG <span class="serial-smudge">▮▪▮ RFID ▮▪▮</span>
+        DATA TAG <span class="serial-smudge" aria-hidden="true">▮▪▮ RFID ▮▪▮</span>
       </div>
     </div>
     <div class="dev-clock"><span>TIME REMAINING</span><div class="dev-timer" data-role="timer">${fmtClock(d.msLeft)}</div></div>
-    <div class="dev-strike-bank"><span>STRIKES</span><div class="dev-strikes" data-role="strikes"></div></div>`;
+    <div class="dev-strike-bank"><span>STRIKES</span><div class="dev-strikes" data-role="strikes" role="img"></div></div>`;
   wrap.appendChild(top);
 
   /* -------- device + feed layout -------- */
   const layout = el("div", "dev-layout");
   const chassis = el("section", `device-chassis chassis-mods-${d.modules.length}`);
+  chassis.setAttribute("aria-label", `${d.mission.codename} device modules`);
   chassis.innerHTML = `<div class="chassis-stencil">CT–${d.mission.id.toUpperCase()} / DO NOT OPEN</div>
     <span class="chassis-handle handle-left"></span><span class="chassis-handle handle-right"></span>
     <span class="chassis-cable cable-a"></span><span class="chassis-cable cable-b"></span>
@@ -48,15 +53,20 @@ export function renderDevice(root: HTMLElement): void {
   const bodies = new Map<GameModule, HTMLElement>();
   const cards = new Map<GameModule, HTMLElement>();
 
-  d.modules.forEach((mod) => {
-    const card = el("div", `module-card module-${mod.kind}`);
+  d.modules.forEach((mod, index) => {
+    const titleId = `module-${mod.kind}-${index}-title`;
+    const instructionId = `module-${mod.kind}-${index}-instruction`;
+    const card = el("section", `module-card module-${mod.kind}`);
+    card.setAttribute("aria-labelledby", titleId);
+    card.setAttribute("aria-describedby", instructionId);
     card.dataset.material = mod.kind;
     const head = el("div", "module-head");
-    head.innerHTML = `<span class="module-label">${mod.label}</span><span class="module-status"><span class="module-status-text">ARMED</span><span class="module-led"></span></span>`;
+    head.innerHTML = `<h2 class="module-label" id="${titleId}">${mod.label}</h2><span class="module-status"><span class="module-status-text">ARMED</span><span class="module-led" aria-hidden="true"></span></span>`;
     const roles = el("div", "module-roles");
     const meta = modulePresentation[mod.kind];
-    roles.innerHTML = `<div>${icon("eye")}<span><b>YOU</b>${meta.human}</span></div><div>${icon("wrench")}<span><b>AGENT</b>${meta.agent}</span></div>`;
+    roles.innerHTML = `<div>${icon("eye")}<span><b>YOU</b> ${meta.human}</span></div><div>${icon("wrench")}<span><b>AGENT</b> ${meta.agent}</span></div>`;
     const instruction = el("div", "module-instruction", `${meta.instruction}`);
+    instruction.id = instructionId;
     const body = el("div", "module-body");
     card.append(head, roles, instruction, body);
     grid.appendChild(card);
@@ -68,8 +78,9 @@ export function renderDevice(root: HTMLElement): void {
   layout.appendChild(chassis);
 
   const side = el("aside", "feedpane");
+  side.setAttribute("aria-labelledby", "team-radio-title");
   side.innerHTML = `<div class="radio-shell"><span class="radio-antenna"></span><span class="radio-dial"></span>
-    <div class="radio-grille">${"<i></i>".repeat(18)}</div><div class="feed-head">${icon("radio")}<span>TEAM RADIO<small>FIELD TRANSCEIVER / RX–24</small></span></div></div>
+    <div class="radio-grille">${"<i></i>".repeat(18)}</div><div class="feed-head">${icon("radio")}<div class="feed-title"><h2 id="team-radio-title">TEAM RADIO</h2><small>FIELD TRANSCEIVER / RX–24</small></div></div></div>
     <div class="printer-slot"><span>PAPER FEED</span></div>`;
   const feedLatest = el("div", "feed-latest");
   const feedHistory = document.createElement("details");
@@ -81,6 +92,11 @@ export function renderDevice(root: HTMLElement): void {
   side.append(feedLatest, feedHistory);
   layout.appendChild(side);
   wrap.appendChild(layout);
+  const liveStatus = el("div", "sr-only");
+  liveStatus.setAttribute("role", "status");
+  liveStatus.setAttribute("aria-live", "polite");
+  liveStatus.setAttribute("aria-atomic", "true");
+  wrap.appendChild(liveStatus);
   root.appendChild(wrap);
 
   const timerEl = top.querySelector<HTMLElement>('[data-role="timer"]')!;
@@ -89,6 +105,8 @@ export function renderDevice(root: HTMLElement): void {
   const paintChrome = (): void => {
     timerEl.textContent = fmtClock(d.msLeft);
     timerEl.classList.toggle("is-low", d.msLeft <= 60_000);
+    timerEl.setAttribute("aria-label", `${fmtClock(d.msLeft)} remaining`);
+    strikesEl.setAttribute("aria-label", `${d.strikes} of 3 strikes`);
     strikesEl.innerHTML = [0, 1, 2]
       .map((i) => `<span class="strike-led${i < d.strikes ? " is-hit" : ""}">✕</span>`)
       .join("");
@@ -120,6 +138,7 @@ export function renderDevice(root: HTMLElement): void {
       .map((f) => `<div class="feed-row tone-${f.tone}"><span class="feed-clock">${f.clock}</span>${esc(f.text)}</div>`)
       .join("");
     feedList.scrollTop = feedList.scrollHeight;
+    if (latest && liveStatus.textContent !== latest.text) liveStatus.textContent = latest.text;
   };
 
   paintChrome();

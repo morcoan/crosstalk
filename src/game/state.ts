@@ -12,7 +12,7 @@ import type {
   Screen,
   SessionTelemetry
 } from "./types";
-import { saveCompletedSession } from "./training";
+import { saveCompletedSessionWithStatus } from "./training";
 import { EchoModule } from "./modules/echo";
 import { KeypadModule } from "./modules/keypad";
 import { RegulatorModule } from "./modules/regulator";
@@ -54,6 +54,8 @@ export const MISSIONS: MissionDef[] = [
 ];
 
 export interface DeviceState {
+  /** Monotonically increasing owner token; module/tool callbacks may only affect this session. */
+  sessionId: number;
   mission: MissionDef;
   seed: number;
   serial: string;
@@ -62,6 +64,8 @@ export interface DeviceState {
   strikes: number;
   result: MissionResult;
   startedAt: number;
+  /** Absolute wall-clock deadline. msLeft is a monotonic cached projection of it. */
+  deadlineAt: number;
   msTotal: number;
   toolCalls: number;
   telemetry: SessionTelemetry;
@@ -89,6 +93,8 @@ export const dirtyModules = new Set<GameModule>();
 let tickHandle: number | null = null;
 let lastTick = 0;
 let lastWholeSecond = -1;
+let sessionSequence = 0;
+let detonationHandle: number | null = null;
 
 export function fmtClock(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -98,14 +104,49 @@ export function fmtClock(ms: number): string {
 }
 
 export function feed(text: string, tone: FeedTone = "info"): void {
-  const clock = game.device && game.device.revealed && !game.device.result ? fmtClock(game.device.msLeft) : "--:--";
+  const clock = game.device?.revealed ? fmtClock(game.device.msLeft) : "--:--";
   game.feed.push({ at: Date.now(), clock, text, tone });
   if (game.feed.length > 200) game.feed.shift();
   emit("feed");
 }
 
 export function missionLive(): boolean {
-  return !!game.device && game.device.revealed && game.device.result === null;
+  return game.device ? deviceLive(game.device) : false;
+}
+
+export function detonationTransitionPending(): boolean {
+  return game.screen === "active" && game.device?.result === "detonated";
+}
+
+function ownsCurrentSession(d: DeviceState): boolean {
+  return game.device === d && game.device.sessionId === d.sessionId;
+}
+
+function updateRemaining(d: DeviceState, now = Date.now()): number {
+  if (d.result !== null) return d.msLeft;
+  const fromDeadline = Math.max(0, d.deadlineAt - now);
+  // Never allow a backward system-clock correction to add time to the fuse.
+  d.msLeft = Math.min(d.msTotal, d.msLeft, fromDeadline);
+  return d.msLeft;
+}
+
+/** Reconcile the current fuse against real wall time; overdue sessions detonate before an action can land. */
+export function syncMissionClock(now = Date.now()): number | null {
+  const d = game.device;
+  if (!d) return null;
+  updateRemaining(d, now);
+  if (d.result === null && d.revealed && d.msLeft <= 0) detonate("timer reached zero", d);
+  return d.msLeft;
+}
+
+function deviceLive(d: DeviceState): boolean {
+  if (!ownsCurrentSession(d) || !d.revealed || d.result !== null) return false;
+  updateRemaining(d);
+  if (d.msLeft <= 0) {
+    detonate("timer reached zero", d);
+    return false;
+  }
+  return true;
 }
 
 function makeSerial(rng: Rng): string {
@@ -137,6 +178,9 @@ export function goToBriefing(missionId: string): MissionDef {
   if (!mission) {
     throw new Error(`Unknown mission "${missionId}". Valid ids: ${MISSIONS.map((m) => m.id).join(", ")}.`);
   }
+  if (detonationTransitionPending()) {
+    throw new Error("The device is still in its detonation sequence. Wait for the debrief before loading another mission.");
+  }
   game.briefingMission = mission;
   game.screen = "briefing";
   emit("screen");
@@ -145,21 +189,28 @@ export function goToBriefing(missionId: string): MissionDef {
 
 /** Build the device and reveal it — the timer starts here. */
 export function armDevice(mission: MissionDef): void {
-  sfx.arm();
+  if (detonationTransitionPending()) {
+    throw new Error("Cannot arm a new device while the previous detonation sequence is still resolving.");
+  }
+  clearDetonationTransition();
   const seed = randomSeed();
   const rng = makeRng(seed);
   const serial = makeSerial(rng);
+  const startedAt = Date.now();
+  const msTotal = mission.seconds * 1000;
 
   const device: DeviceState = {
+    sessionId: ++sessionSequence,
     mission,
     seed,
     serial,
     modules: [],
-    msLeft: mission.seconds * 1000,
-    msTotal: mission.seconds * 1000,
+    msLeft: msTotal,
+    msTotal,
     strikes: 0,
     result: null,
-    startedAt: Date.now(),
+    startedAt,
+    deadlineAt: startedAt + msTotal,
     toolCalls: 0,
     telemetry: {
       agentReads: 0,
@@ -173,25 +224,31 @@ export function armDevice(mission: MissionDef): void {
     revealed: true
   };
 
+  dirtyModules.clear();
   device.modules = mission.modules.map((kind) => {
     const slot: { mod: GameModule | null } = { mod: null };
     const ctx: ModuleCtx = {
       rng,
       serial,
-      strike: (reason) => registerStrike(reason),
+      strike: (reason) => registerStrike(device, reason),
       solve: () => {
-        sfx.solve();
+        if (!deviceLive(device)) return;
         if (slot.mod) dirtyModules.add(slot.mod);
         emit("lifecycle"); // solved module's tools get aborted
-        checkWin();
+        checkWin(device);
+        sfx.solve();
       },
       update: () => {
+        if (!ownsCurrentSession(device)) return;
         if (slot.mod) dirtyModules.add(slot.mod);
         emit("state");
       },
-      missionLive,
-      feed,
+      missionLive: () => deviceLive(device),
+      feed: (text, tone) => {
+        if (deviceLive(device)) feed(text, tone);
+      },
       humanAction: (irreversible = false) => {
+        if (!deviceLive(device)) return;
         device.telemetry.humanActions++;
         if (irreversible) device.telemetry.irreversibleConfirmations++;
       }
@@ -208,58 +265,68 @@ export function armDevice(mission: MissionDef): void {
   emit("screen");
   emit("lifecycle");
   startLoop();
+  sfx.arm();
 }
 
-function registerStrike(reason: string): void {
-  const d = game.device;
-  if (!d || d.result) return;
+function registerStrike(d: DeviceState, reason: string): void {
+  if (!deviceLive(d)) return;
   d.strikes++;
-  sfx.strike();
   feed(`STRIKE ${d.strikes}/3 — ${reason}.`, "bad");
   if (d.strikes >= 3) {
-    detonate("three strikes");
+    detonate("three strikes", d);
+  } else {
+    emit("state");
   }
-  emit("state");
+  sfx.strike();
 }
 
-function checkWin(): void {
-  const d = game.device;
-  if (!d || d.result) return;
+function checkWin(d: DeviceState): void {
+  if (!deviceLive(d)) return;
   if (d.modules.every((m) => m.status === "solved")) {
     d.result = "disarmed";
     stopLoop();
-    sfx.win();
     feed(`ALL MODULES DISARMED with ${fmtClock(d.msLeft)} remaining. Device released.`, "good");
     game.screen = "debrief";
-    saveBest(d);
-    saveTraining(d);
+    const bestSaved = saveBest(d);
+    const dossierSaved = saveTraining(d);
+    if (!bestSaved || !dossierSaved) {
+      feed("LOCAL RECORD NOT SAVED — browser storage is unavailable or full. Gameplay is unaffected.", "bad");
+    }
     emit("screen");
     emit("lifecycle");
+    sfx.win();
   }
 }
 
-function detonate(cause: string): void {
-  const d = game.device;
-  if (!d || d.result) return;
+function detonate(cause: string, d: DeviceState): void {
+  if (!ownsCurrentSession(d) || d.result) return;
+  d.msLeft = Math.max(0, d.msLeft);
   d.result = "detonated";
-  saveTraining(d);
   stopLoop();
-  sfx.boom();
   feed(`DEVICE DETONATED — ${cause}.`, "bad");
-  document.body.classList.add("is-boom");
-  window.setTimeout(() => {
-    document.body.classList.remove("is-boom");
+  if (!saveTraining(d)) {
+    feed("LOCAL RECORD NOT SAVED — browser storage is unavailable or full. Gameplay is unaffected.", "bad");
+  }
+  setBoomClass(true);
+  const sessionId = d.sessionId;
+  detonationHandle = globalThis.setTimeout(() => {
+    detonationHandle = null;
+    setBoomClass(false);
+    if (!ownsCurrentSession(d) || d.sessionId !== sessionId || d.result !== "detonated" || game.screen !== "active") {
+      return;
+    }
     game.screen = "debrief";
     emit("screen");
   }, 1400);
   emit("state");
   emit("lifecycle");
+  sfx.boom();
 }
 
-function saveTraining(d: DeviceState): void {
-  if (d.dossierSaved || !d.result) return;
-  d.dossierSaved = true;
-  saveCompletedSession({
+function saveTraining(d: DeviceState): boolean {
+  if (d.dossierSaved) return true;
+  if (!d.result) return false;
+  const saved = saveCompletedSessionWithStatus({
     missionId: d.mission.id,
     result: d.result,
     msLeft: d.msLeft,
@@ -268,30 +335,36 @@ function saveTraining(d: DeviceState): void {
     telemetry: d.telemetry,
     completedAt: Date.now()
   });
+  d.dossierSaved = saved.persisted;
+  return saved.persisted;
 }
 
 function startLoop(): void {
   stopLoop();
-  lastTick = performance.now();
+  const owner = game.device;
+  if (!owner || typeof requestAnimationFrame !== "function") return;
+  lastTick = Date.now();
   lastWholeSecond = -1;
-  const step = (now: number): void => {
-    const d = game.device;
-    if (!d || d.result !== null) return;
-    const dt = Math.min(200, now - lastTick);
+  const step = (): void => {
+    if (!ownsCurrentSession(owner) || owner.result !== null) return;
+    const now = Date.now();
+    const elapsed = Math.max(0, now - lastTick);
     lastTick = now;
-    d.msLeft -= dt;
-    d.modules.forEach((m) => m.tick?.(dt));
+    updateRemaining(owner, now);
+    if (owner.msLeft <= 0) {
+      detonate("timer reached zero", owner);
+      return;
+    }
+    // Visual/audio modules remain bounded even if a background tab resumes late;
+    // the authoritative fuse above always consumes the full wall-clock interval.
+    const simulationDt = Math.min(200, elapsed);
+    owner.modules.forEach((m) => m.tick?.(simulationDt));
 
-    const sec = Math.ceil(d.msLeft / 1000);
+    const sec = Math.ceil(owner.msLeft / 1000);
     if (sec !== lastWholeSecond) {
       lastWholeSecond = sec;
       if (sec <= 30 && sec > 0) sfx.timerTick();
       emit("state");
-    }
-    if (d.msLeft <= 0) {
-      d.msLeft = 0;
-      detonate("timer reached zero");
-      return;
     }
     tickHandle = requestAnimationFrame(step);
   };
@@ -299,12 +372,25 @@ function startLoop(): void {
 }
 
 function stopLoop(): void {
-  if (tickHandle !== null) cancelAnimationFrame(tickHandle);
+  if (tickHandle !== null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(tickHandle);
   tickHandle = null;
+}
+
+function setBoomClass(active: boolean): void {
+  if (typeof document === "undefined") return;
+  document.body?.classList.toggle("is-boom", active);
+}
+
+function clearDetonationTransition(): void {
+  if (detonationHandle !== null) globalThis.clearTimeout(detonationHandle);
+  detonationHandle = null;
+  setBoomClass(false);
 }
 
 export function backToMenu(): void {
   stopLoop();
+  clearDetonationTransition();
+  dirtyModules.clear();
   game.device = null;
   game.briefingMission = null;
   game.screen = "menu";
@@ -320,23 +406,38 @@ export interface BestRecord {
   when: number;
 }
 
-export function bestFor(missionId: string): BestRecord | null {
+export function parseBestRecord(raw: string | null, maxMs = Number.MAX_SAFE_INTEGER): BestRecord | null {
+  if (!raw) return null;
   try {
-    const raw = store.get(`crosstalk.best.${missionId}`);
-    return raw ? (JSON.parse(raw) as BestRecord) : null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const row = value as Partial<BestRecord>;
+    const { msLeft, strikes, when } = row;
+    if (typeof msLeft !== "number" || !Number.isSafeInteger(msLeft) || msLeft < 0 || msLeft > maxMs) {
+      return null;
+    }
+    if (typeof strikes !== "number" || !Number.isInteger(strikes) || strikes < 0 || strikes > 2) return null;
+    if (typeof when !== "number" || !Number.isSafeInteger(when) || when < 0) return null;
+    return { msLeft, strikes, when };
   } catch {
     return null;
   }
 }
 
-function saveBest(d: DeviceState): void {
+export function bestFor(missionId: string): BestRecord | null {
+  const maxMs = (MISSIONS.find((mission) => mission.id === missionId)?.seconds ?? 86_400) * 1000;
+  return parseBestRecord(store.get(`crosstalk.best.${missionId}`), maxMs);
+}
+
+function saveBest(d: DeviceState): boolean {
   const prev = bestFor(d.mission.id);
   if (!prev || d.msLeft > prev.msLeft) {
-    store.set(
+    return store.set(
       `crosstalk.best.${d.mission.id}`,
       JSON.stringify({ msLeft: d.msLeft, strikes: d.strikes, when: Date.now() } satisfies BestRecord)
     );
   }
+  return true;
 }
 
 export function rating(d: DeviceState): string {

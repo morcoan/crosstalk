@@ -72,6 +72,7 @@ export class EchoModule implements GameModule {
   private display = 1;
   private labels: number[] = [1, 2, 3, 4];
   private history: EchoPress[] = [];
+  private root: HTMLElement | null = null;
 
   constructor(private ctx: ModuleCtx) {
     this.rollStage();
@@ -117,6 +118,7 @@ export class EchoModule implements GameModule {
         inputSchema: { type: "object", properties: {} },
         readOnly: true,
         execute: () => {
+          if (!this.ctx.missionLive()) throw new Error("This ECHO recorder belongs to an expired device session.");
           if (this.history.length === 0) {
             return `No stages completed yet. ECHO is on stage ${this.stage}; ask your partner for the display digit and the four button labels.`;
           }
@@ -131,6 +133,7 @@ export class EchoModule implements GameModule {
   }
 
   render(root: HTMLElement): void {
+    this.root = root;
     root.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.className = "echo";
@@ -139,8 +142,8 @@ export class EchoModule implements GameModule {
       .join("");
     wrap.innerHTML = `
       <div class="echo-top">
-        <div class="echo-display" aria-label="echo display">${this.status === "solved" ? "✓" : this.display}</div>
-        <div class="echo-stages">${stages}</div>
+        <div class="echo-display" aria-label="${this.status === "solved" ? "echo core cleared" : `echo stage ${this.stage} display ${this.display}`}" tabindex="-1">${this.status === "solved" ? "✓" : this.display}</div>
+        <div class="echo-stages" aria-label="echo progress, ${this.history.length} of 4 stages accepted">${stages}</div>
       </div>`;
     const row = document.createElement("div");
     row.className = "echo-buttons";
@@ -156,6 +159,8 @@ export class EchoModule implements GameModule {
     wrap.appendChild(row);
     const hint = document.createElement("div");
     hint.className = "hint";
+    hint.setAttribute("role", "status");
+    hint.setAttribute("aria-live", "polite");
     hint.textContent =
       this.status === "solved"
         ? "Memory chain complete."
@@ -193,5 +198,7 @@ export class EchoModule implements GameModule {
       this.rollStage();
     }
     this.ctx.update();
+    if (!this.root?.isConnected) return;
+    this.root.querySelector<HTMLElement>(".echo-display")?.focus({ preventScroll: true });
   }
 }

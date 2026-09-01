@@ -44,6 +44,7 @@ export class SignalModule implements GameModule {
   private ledEl: HTMLElement | null = null;
   private txEl: HTMLElement | null = null;
   private beeped = new Set<number>();
+  private root: HTMLElement | null = null;
 
   constructor(private ctx: ModuleCtx) {
     this.target = ctx.rng.pick(SIGNAL_TABLE);
@@ -91,6 +92,7 @@ export class SignalModule implements GameModule {
   }
 
   private setFrequency(mhz: number): string {
+    if (!this.ctx.missionLive()) throw new Error("This transmitter control belongs to an expired device session.");
     if (this.status === "solved") return "The transmitter already fired. Module is disarmed.";
     if (!Number.isFinite(mhz)) throw new Error("mhz must be a number, e.g. 3.522");
     const detent = SIGNAL_TABLE.find((d) => Math.abs(d.mhz - mhz) < 0.0005);
@@ -129,6 +131,7 @@ export class SignalModule implements GameModule {
   }
 
   render(root: HTMLElement): void {
+    this.root = root;
     root.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.className = "signal";
@@ -169,6 +172,7 @@ export class SignalModule implements GameModule {
     if (this.txMhz === null) {
       this.ctx.feed("TRANSMIT pressed with no frequency seated — transmitter idle.", "info");
       this.ctx.update();
+      this.root?.querySelector<HTMLButtonElement>(".btn-transmit")?.focus({ preventScroll: true });
       return;
     }
     if (Math.abs(this.txMhz - this.target.mhz) < 0.0005) {
@@ -180,5 +184,8 @@ export class SignalModule implements GameModule {
       this.ctx.strike("transmitted on the wrong frequency");
     }
     this.ctx.update();
+    if (this.root?.isConnected && this.status !== "solved") {
+      this.root.querySelector<HTMLButtonElement>(".btn-transmit")?.focus({ preventScroll: true });
+    }
   }
 }

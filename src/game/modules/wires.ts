@@ -90,6 +90,8 @@ export class WiresModule implements GameModule {
       const row = document.createElement("button");
       row.className = `wire wire-${wire.color}${wire.cut ? " is-cut" : ""}`;
       row.disabled = wire.cut || this.status === "solved" || !this.ctx.missionLive();
+      row.dataset.wireIndex = String(i);
+      row.setAttribute("aria-pressed", String(this.pendingCut === i));
       row.setAttribute("aria-label", `wire ${i + 1}, ${wire.color}${wire.cut ? ", cut" : ""}`);
       row.innerHTML = `
         <span class="wire-num">${i + 1}</span>
@@ -103,21 +105,31 @@ export class WiresModule implements GameModule {
     const confirm = document.createElement("div");
     confirm.className = "confirm-strip";
     confirm.dataset.role = "confirm";
+    confirm.setAttribute("role", "group");
+    confirm.setAttribute("aria-label", "wire cut confirmation");
     bay.appendChild(confirm);
     root.appendChild(bay);
     this.renderConfirm();
   }
 
   private askCut(i: number): void {
-    if (this.status === "solved" || this.wires[i].cut) return;
+    if (!this.ctx.missionLive() || this.status === "solved" || this.wires[i].cut) return;
     sfx.click();
     this.pendingCut = this.pendingCut === i ? null : i;
     this.renderConfirm();
+    if (this.pendingCut === i) {
+      this.root?.querySelector<HTMLButtonElement>(".btn-danger")?.focus({ preventScroll: true });
+    }
   }
 
   private renderConfirm(): void {
     const strip = this.root?.querySelector<HTMLElement>('[data-role="confirm"]');
     if (!strip) return;
+    this.root?.querySelectorAll<HTMLButtonElement>(".wire").forEach((wire, index) => {
+      const selected = this.pendingCut === index;
+      wire.classList.toggle("is-selected", selected);
+      wire.setAttribute("aria-pressed", String(selected));
+    });
     if (this.pendingCut === null) {
       strip.innerHTML = `<span class="hint">Select a wire, then confirm the cut. Cuts are permanent.</span>`;
       return;
@@ -136,8 +148,10 @@ export class WiresModule implements GameModule {
     cancel.className = "btn btn-ghost";
     cancel.textContent = "CANCEL";
     cancel.addEventListener("click", () => {
+      const restore = i;
       this.pendingCut = null;
       this.renderConfirm();
+      this.root?.querySelector<HTMLButtonElement>(`.wire[data-wire-index="${restore}"]`)?.focus({ preventScroll: true });
     });
     strip.append(label, btn, cancel);
   }
@@ -157,5 +171,8 @@ export class WiresModule implements GameModule {
       this.ctx.strike(`wrong wire cut (wire ${i + 1})`);
     }
     this.ctx.update();
+    if (this.root?.isConnected && this.status !== "solved") {
+      this.root.querySelector<HTMLButtonElement>(".wire:not(:disabled)")?.focus({ preventScroll: true });
+    }
   }
 }

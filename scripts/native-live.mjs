@@ -6,10 +6,18 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 950 } });
 const fails = [];
 const check = (l, c) => { console.log(`${c ? "  ok" : "FAIL"}  ${l}`); if (!c) fails.push(l); };
 page.on("pageerror", (e) => fails.push(`pageerror: ${e.message}`));
-await page.goto(URL);
+page.on("console", (message) => {
+  if (message.type() === "error") fails.push(`console.error: ${message.text().slice(0, 200)}`);
+});
+page.on("requestfailed", (request) => {
+  fails.push(`requestfailed: ${request.method()} ${request.url()} (${request.failure()?.errorText ?? "unknown"})`);
+});
+const navigation = await page.goto(URL, { waitUntil: "domcontentloaded" });
+check("live origin returns a successful document", navigation?.ok() === true);
 await page.waitForSelector(".mission-card");
 check("live site renders", true);
-check("live badge shows agent link", (await page.locator(".badge.is-linked").count()) === 1);
+check("live layout renders both responsive linked badges", (await page.locator(".badge.is-linked").count()) === 2);
+check("exactly one linked badge is visible", (await page.locator(".badge.is-linked:visible").count()) === 1);
 const names = await page.evaluate(async () => (await document.modelContext.getTools()).map((t) => t.name).sort());
 console.log("     live native tools:", names.join(", "));
 check("base tools natively registered on production origin", names.length === 5 && names.includes("get_training_record"));

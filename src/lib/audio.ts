@@ -10,19 +10,32 @@ function storage(): Storage | null {
   }
 }
 
-let muted = storage()?.getItem("crosstalk.muted") === "1";
+function readMuted(): boolean {
+  try {
+    return storage()?.getItem("crosstalk.muted") === "1";
+  } catch {
+    return false;
+  }
+}
+
+let muted = readMuted();
 
 function ac(): AudioContext | null {
   if (muted) return null;
-  if (!ctx) {
-    try {
+  try {
+    if (!ctx) {
       ctx = new AudioContext();
-    } catch {
-      return null;
     }
+    if (ctx.state === "suspended") {
+      void ctx.resume().catch(() => {
+        /* Audio is optional; autoplay or device failures never block the game. */
+      });
+    }
+    return ctx;
+  } catch {
+    ctx = null;
+    return null;
   }
-  if (ctx.state === "suspended") void ctx.resume();
-  return ctx;
 }
 
 export function isMuted(): boolean {
@@ -31,7 +44,11 @@ export function isMuted(): boolean {
 
 export function setMuted(m: boolean): void {
   muted = m;
-  storage()?.setItem("crosstalk.muted", m ? "1" : "0");
+  try {
+    storage()?.setItem("crosstalk.muted", m ? "1" : "0");
+  } catch {
+    /* A denied/quota-full localStorage must not break the audio control. */
+  }
 }
 
 /** Ensure the AudioContext is unlocked; call from a user gesture. */
@@ -42,17 +59,21 @@ export function unlock(): void {
 function tone(freq: number, dur: number, type: OscillatorType, gain: number, when = 0): void {
   const a = ac();
   if (!a) return;
-  const t0 = a.currentTime + when;
-  const osc = a.createOscillator();
-  const g = a.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(gain, t0 + 0.008);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(g).connect(a.destination);
-  osc.start(t0);
-  osc.stop(t0 + dur + 0.05);
+  try {
+    const t0 = a.currentTime + when;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(a.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  } catch {
+    /* Broken/removed output devices are cosmetic failures only. */
+  }
 }
 
 export const sfx = {
@@ -75,18 +96,22 @@ export const sfx = {
   servo(): void {
     const a = ac();
     if (!a) return;
-    const t0 = a.currentTime;
-    const osc = a.createOscillator();
-    const g = a.createGain();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(95, t0);
-    osc.frequency.exponentialRampToValueAtTime(210, t0 + 0.14);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.035, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
-    osc.connect(g).connect(a.destination);
-    osc.start(t0);
-    osc.stop(t0 + 0.18);
+    try {
+      const t0 = a.currentTime;
+      const osc = a.createOscillator();
+      const g = a.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(95, t0);
+      osc.frequency.exponentialRampToValueAtTime(210, t0 + 0.14);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.035, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+      osc.connect(g).connect(a.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.18);
+    } catch {
+      /* Audio is never authoritative game state. */
+    }
   },
   timerTick(): void {
     tone(1100, 0.025, "square", 0.035);
@@ -105,22 +130,26 @@ export const sfx = {
   boom(): void {
     const a = ac();
     if (!a) return;
-    const dur = 1.4;
-    const buffer = a.createBuffer(1, a.sampleRate * dur, a.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2.2);
+    try {
+      const dur = 1.4;
+      const buffer = a.createBuffer(1, a.sampleRate * dur, a.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2.2);
+      }
+      const src = a.createBufferSource();
+      src.buffer = buffer;
+      const filter = a.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(3000, a.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(60, a.currentTime + dur);
+      const g = a.createGain();
+      g.gain.value = 0.5;
+      src.connect(filter).connect(g).connect(a.destination);
+      src.start();
+      tone(55, 1.1, "sine", 0.4);
+    } catch {
+      /* The boom effect may fail; the detonation state must not. */
     }
-    const src = a.createBufferSource();
-    src.buffer = buffer;
-    const filter = a.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(3000, a.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(60, a.currentTime + dur);
-    const g = a.createGain();
-    g.gain.value = 0.5;
-    src.connect(filter).connect(g).connect(a.destination);
-    src.start();
-    tone(55, 1.1, "sine", 0.4);
   }
 };
