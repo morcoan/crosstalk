@@ -744,6 +744,7 @@ html {
 }
 
 .module-signal .module-body {
+  container: signal-module / inline-size;
   padding: 13px;
   border: 3px solid #353a31;
   background:
@@ -935,6 +936,25 @@ html {
 @keyframes signal-meter-kick {
   from { transform: scaleY(0.48); }
   to { transform: scaleY(1); }
+}
+
+@container signal-module (max-width: 350px) {
+  .module-signal .signal-row {
+    grid-template-columns: 1fr;
+  }
+
+  .module-signal .signal-dial {
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+    align-items: center;
+    justify-items: start;
+  }
+
+  .module-signal .dial-value {
+    min-width: 96px;
+    padding-block: 9px;
+    justify-self: end;
+  }
 }
 
 .feedpane {

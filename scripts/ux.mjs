@@ -386,13 +386,23 @@ try {
     const speaker = document.querySelector('[data-role="signal-speaker"]');
     const lamp = document.querySelector('.speaker-led');
     const label = document.querySelector('[data-role="pulse-label"]');
+    const pulsePanel = document.querySelector('.speaker-pulse');
     const style = lamp ? getComputedStyle(lamp) : null;
     const rect = lamp?.getBoundingClientRect();
+    const speakerRect = speaker?.getBoundingClientRect();
+    const pulseRect = pulsePanel?.getBoundingClientRect();
     return {
       accessibleName: speaker?.getAttribute("aria-label") ?? "",
       label: label?.textContent?.trim() ?? "",
       width: rect?.width ?? 0,
       height: rect?.height ?? 0,
+      pulseContained: Boolean(
+        speakerRect && pulseRect &&
+        pulseRect.left >= speakerRect.left &&
+        pulseRect.right <= speakerRect.right + 1 &&
+        pulseRect.top >= speakerRect.top &&
+        pulseRect.bottom <= speakerRect.bottom + 1
+      ),
       background: style?.backgroundImage ?? "",
       shadow: style?.boxShadow ?? ""
     };
@@ -416,6 +426,7 @@ try {
     };
   });
   check(signalOff.width >= 40 && signalOff.height >= 40, "SIGNAL TX uses a large visible pulse lamp instead of a status pinprick");
+  check(signalOff.pulseContained, "SIGNAL TX pulse panel stays fully visible inside the speaker housing");
   check(/short and long beep rhythm/i.test(signalOff.accessibleName) && signalOff.label === "LISTEN", "SIGNAL TX explains the visual rhythm indicator");
   check(
     signalOn.label === "BEEP" &&
