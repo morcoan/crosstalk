@@ -14,7 +14,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 
 const DIST = new URL("../dist/", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".ttf": "font/ttf" };
 const server = createServer(async (req, res) => {
   const path = req.url === "/" ? "/index.html" : (req.url ?? "/").split("?")[0];
   try {
@@ -267,7 +267,10 @@ await page.goto("http://localhost:4573/");
 await page.waitForSelector(".mission-card");
 
 check("menu renders 3 mission cards", (await page.locator(".mission-card").count()) === 3);
-check("agent-link badge is green", (await page.locator(".badge.is-linked").count()) === 1);
+check(
+  "agent-link badge is green",
+  (await page.locator(".badge.is-linked").count()) === 2 && (await page.locator(".badge.is-linked:visible").count()) === 1
+);
 const baseTools = await toolNames();
 console.log("     base tools:", baseTools.join(", "));
 check(

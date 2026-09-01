@@ -1,4 +1,4 @@
-# CROSSTALK v1.3 — UX and game-feel rationale
+# CROSSTALK v1.4 — UX, game-feel and handcrafted-art rationale
 
 This pass deliberately preserved the mission rules. It changes how quickly a new player can form a
 mental model, how clearly the game communicates ownership and state, and how much feedback each
@@ -11,7 +11,7 @@ action receives.
 Ryan, Rigby and Przybylski's four-study Self-Determination Theory research found that in-game
 autonomy, competence and relatedness predict enjoyment and future play, while intuitive controls are
 associated with competence and immersion. CROSSTALK's strongest need is relatedness: neither side has
-the whole picture. v1.3 makes that partnership legible instead of leaving it implicit.
+the whole picture. v1.4 makes that partnership legible instead of leaving it implicit.
 
 Applied here:
 
@@ -41,7 +41,7 @@ Source: [MDA: A Formal Approach to Game Design and Game Research](https://www.cs
 ### Amplify action feedback, remove decorative noise
 
 Game-feel research describes “juicing” as feedback amplification that communicates the importance of
-events, and streamlining as letting the game act on player intention. v1.3 uses small, semantic
+events, and streamlining as letting the game act on player intention. v1.4 uses small, semantic
 responses rather than constant ambient animation.
 
 Applied here:
@@ -52,6 +52,25 @@ Applied here:
 - reduced-motion mode removes pulses, transitions and decorative movement.
 
 Source: [Designing Game Feel: A Survey](https://arxiv.org/abs/2011.09201)
+
+### Build a place, not a component library
+
+The earlier pass made the hierarchy clearer, but too many equally rounded panels still read as a
+generated interface. v1.4 gives each surface an object identity and a reason to exist. The hierarchy
+is carried by material, placement and wear: paper is for instructions, manila and blueprint stock are
+for missions, painted metal is for equipment, and thermal paper is for live radio output.
+
+Applied here:
+
+- the landing page is an asymmetric workbench scene, not a centered dashboard;
+- mission choices are three differently sized and differently surfaced case files;
+- modules share one enclosing chassis, so the device reads as a prop rather than a grid of widgets;
+- the briefing and debrief reuse familiar physical forms—a docket and clipboard—so their purpose is
+  understood before the text is read;
+- controlled imperfections (tape, clips, punch holes, rivets, pencil marks and slight rotation) are
+  authored selectively instead of randomized across every element;
+- local condensed, technical and handwritten typefaces supply distinct voices without runtime font
+  requests; licenses and original artwork provenance are recorded in `CREDITS.md`.
 
 ### Make the critical path operable at a glance
 

@@ -51,7 +51,7 @@ tool calls), precise description (modules cleared on human-only channels), human
 confirmation (irreversible actions that went through your hands), and trust calibration (strikes) —
 turning the game's impact thesis into something the player sees, every run.
 
-Version 1.3 closes the coaching loop and presents it as one coherent analog field kit. A local
+Version 1.4 closes the coaching loop and presents it as a hand-assembled field workbench. A local
 **FIELD RECORD** stores attempts, clean clears and observable collaboration signals — never chat
 content. Before play, the read-only
 `get_training_record` tool lets the agent recommend the next drill. On debrief,
@@ -59,9 +59,12 @@ content. Before play, the read-only
 focus, then vanishes when the next mission begins. The declarative field report completes the loop:
 recommend → play → review → reflect. The menu teaches observe → communicate → commit; mission
 briefings and every live module state human/agent ownership; the latest device event is promoted over
-history; and the 320px responsive layout preserves a sticky timer and 44px touch targets. The look is
-code-native — stamped metal cards, enamel controls, instrument typography and synthesized audio —
-with zero external art or runtime packages.
+history; and the 320px responsive layout preserves a sticky timer and 44px touch targets. The menu is
+an asymmetric desk scene of taped placards, punch cards and three materially distinct case folders;
+briefings are clipped dockets; live modules share one equipment chassis; and the radio prints onto
+paper. All textures and prop details are original code-drawn artwork. Three OFL type families are
+bundled and credited, so the finished look makes no external image or font request and still has zero
+runtime packages.
 
 ### Why this use case is a strong fit for WebMCP
 

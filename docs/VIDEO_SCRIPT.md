@@ -2,8 +2,9 @@
 
 The recorded cut is designed to show the product claim, not merely describe it: an agent reads a persistent local operator dossier, recommends and starts a mission, collaborates through sensory and actuation boundaries, then returns an evidence-bounded coaching focus.
 
-The v1.3 picture pass uses the final analog field-kit UI throughout: stamped mission cards,
-instrument timer, explicit YOU/AGENT role plates, action callouts and the latest TEAM RADIO event.
+The v1.4 picture pass uses the final handcrafted workbench UI throughout: taped paper placards,
+three distinct case folders, a clipped briefing docket, the shared device chassis, explicit
+human/agent role notes and a field transceiver that prints the latest TEAM RADIO event.
 
 ## Storyboard
 

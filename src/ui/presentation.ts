@@ -19,10 +19,31 @@ export function icon(name: IconName, className = "ui-icon"): string {
   return `<svg class="${className}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name]}</svg>`;
 }
 
-export const missionPresentation: Record<string, { threat: string; flavor: string; icon: IconName }> = {
-  handshake: { threat: "TRAINING", flavor: "Learn the handoff", icon: "wire" },
-  "crossed-wires": { threat: "FIELD", flavor: "Trade eyes for hands", icon: "gauge" },
-  "silent-frequency": { threat: "HOSTILE", flavor: "Full-spectrum teamwork", icon: "signal" }
+export const missionPresentation: Record<string, { threat: string; flavor: string; icon: IconName; file: string; note: string; material: string }> = {
+  handshake: {
+    threat: "TRAINING",
+    flavor: "Learn the handoff",
+    icon: "wire",
+    file: "DRILL / 01",
+    note: "Start here. Learn to ask before you cut.",
+    material: "manila"
+  },
+  "crossed-wires": {
+    threat: "FIELD",
+    flavor: "Trade eyes for hands",
+    icon: "gauge",
+    file: "CASE / 17B",
+    note: "The needle belongs to you. The dial belongs to them.",
+    material: "blueprint"
+  },
+  "silent-frequency": {
+    threat: "HOSTILE",
+    flavor: "Full-spectrum teamwork",
+    icon: "signal",
+    file: "BLACK / 03",
+    note: "Four channels. Keep the radio open.",
+    material: "redfile"
+  }
 };
 
 export const modulePresentation: Record<ModuleKind, { human: string; agent: string; instruction: string }> = {

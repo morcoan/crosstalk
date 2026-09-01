@@ -33,26 +33,31 @@ export function renderScreen(root: HTMLElement): void {
 function renderMenu(root: HTMLElement): void {
   const linked = webmcpAvailable();
   const wrap = el("div", "screen menu");
+  wrap.innerHTML = `<span class="bench-mark mark-a">MEASURE TWICE</span><span class="bench-mark mark-b">↗ keep the line open</span>`;
+
+  const topScene = el("div", "menu-top");
 
   const hero = el("section", "hero");
   hero.innerHTML = `
-    <div class="hero-eyebrow">FIELD COMMUNICATION EXERCISE</div>
+    <span class="placard-tape tape-left"></span><span class="placard-tape tape-right"></span>
+    <div class="hero-eyebrow">FIELD COMMUNICATION EXERCISE / ISSUE 04</div>
     <h1 class="title">CROSS<span>TALK</span></h1>
     <p class="tagline">You see it. Your agent knows it. <b>Talk fast.</b></p>
     <p class="subline">A cooperative bomb-defusal game for one human and one AI teammate.
-    Neither side has the whole picture.</p>`;
-  wrap.appendChild(hero);
+    Neither side has the whole picture.</p>
+    <div class="hero-scribble">one device / two senses</div>`;
+  topScene.appendChild(hero);
 
   const link = el("section", `linkcard ${linked ? "is-ok" : "is-warn"}`);
   link.innerHTML = linked
-    ? `<div class="linkcard-head">${icon("link")}<span><b>AGENT CONNECTED</b><small>Your teammate has the manual, scanner and remote controls.</small></span></div>
+    ? `<span class="paper-clip"></span><span class="note-pin"></span><div class="linkcard-head">${icon("link")}<span><b>LINE TO AGENT: OPEN</b><small>Your teammate has the manual, scanner and remote controls.</small></span></div>
        <p>Copy the briefing into your agent chat, then choose a mission.</p>
        <details class="connection-help"><summary>Connection help and technical details</summary>
        <p>CROSSTALK exposes its equipment through WebMCP. If no agent chat is attached, use <b>AGENT KIT</b>
        to operate the same tools by hand, or connect through the
        <a href="https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd"
        target="_blank" rel="noreferrer">Model Context Tool Inspector</a>.</p></details>`
-    : `<div class="linkcard-head">${icon("link")}<span><b>PLAY WITH AN AGENT</b><small>Best experienced as a two-player communication game.</small></span></div>
+    : `<span class="paper-clip"></span><span class="note-pin"></span><div class="linkcard-head">${icon("link")}<span><b>LINE TO AGENT: CLOSED</b><small>Best experienced as a two-player communication game.</small></span></div>
        <p>Open CROSSTALK in ChatGPT's in-app browser or a WebMCP-enabled Chrome browser. Prefer to explore first?
        Open the <b>FIELD MANUAL</b> and play solo.</p>
        <details class="connection-help"><summary>How to enable the agent link</summary><p>Chrome 149+: enable
@@ -69,7 +74,8 @@ function renderMenu(root: HTMLElement): void {
   });
   promptRow.append(promptBox, copyBtn);
   link.appendChild(promptRow);
-  wrap.appendChild(link);
+  topScene.appendChild(link);
+  wrap.appendChild(topScene);
 
   const record = loadTrainingRecord();
   const choices = MISSIONS.map(({ id, codename }) => ({ id, codename }));
@@ -77,7 +83,8 @@ function renderMenu(root: HTMLElement): void {
   const recommended = recommendMission(record, choices);
   const dossier = el("section", "dossier");
   dossier.innerHTML = `
-    <div class="dossier-progress"><span class="dossier-kicker">FIELD RECORD</span>
+    <span class="punch-hole punch-a"></span><span class="punch-hole punch-b"></span>
+    <div class="dossier-progress"><span class="dossier-kicker">FIELD RECORD / PUNCH CARD</span>
       <b>${totals.completed}/${MISSIONS.length} MISSIONS CLEARED</b>
       <span class="progress-track"><i style="width:${(totals.completed / MISSIONS.length) * 100}%"></i></span></div>
     <div class="dossier-stats"><b>${totals.cleanWins}</b> clean clear${totals.cleanWins === 1 ? "" : "s"}
@@ -85,19 +92,25 @@ function renderMenu(root: HTMLElement): void {
     <div class="dossier-next"><span>RECOMMENDED</span><b>${recommended.codename}</b></div>`;
   wrap.appendChild(dossier);
 
+  const stackLabel = el("div", "mission-stack-label", `<span>CHOOSE A CASE FILE</span><i>Pull one. Brief together. Then arm.</i>`);
+  wrap.appendChild(stackLabel);
+
   const grid = el("section", "mission-grid");
   MISSIONS.forEach((m, i) => {
     const best = bestFor(m.id);
     const art = missionPresentation[m.id];
     const isRecommended = recommended.id === m.id;
     const card = el("button", `mission-card mission-${m.id}${isRecommended ? " is-recommended" : ""}`);
+    card.dataset.material = art.material;
     card.innerHTML = `
-      ${isRecommended ? '<div class="mission-ribbon">RECOMMENDED</div>' : ""}
+      <span class="folder-tab">${art.file}</span><span class="folder-fastener"></span>
+      ${isRecommended ? '<div class="mission-ribbon">START HERE</div>' : ""}
       <div class="mission-top"><span class="mission-index">${String(i + 1).padStart(2, "0")}</span>
         <span class="mission-threat">${art.threat}</span></div>
       <div class="mission-insignia">${icon(art.icon)}</div>
       <div class="mission-name">${m.codename}</div>
       <div class="mission-flavor">${art.flavor}</div>
+      <div class="mission-note">${art.note}</div>
       <div class="mission-meta"><span>${m.modules.length} MODULE${m.modules.length === 1 ? "" : "S"}</span><span>FUSE ${fmtClock(m.seconds * 1000)}</span></div>
       <div class="mission-best">${best ? `BEST ${fmtClock(best.msLeft)} · ${best.strikes} STRIKE${best.strikes === 1 ? "" : "S"}` : "UNTESTED DEVICE"}</div>
       <div class="mission-cta">OPEN BRIEFING <span>→</span></div>`;
@@ -108,14 +121,17 @@ function renderMenu(root: HTMLElement): void {
 
   const how = el("section", "howto");
   how.innerHTML = `
-    <div class="how-col"><span class="how-step">01</span>${icon("eye")}<h3>OBSERVE</h3><p>Read the colors, glyphs, gauges and sounds your agent cannot sense.</p></div>
-    <div class="how-col"><span class="how-step">02</span>${icon("radio")}<h3>COMMUNICATE</h3><p>Your agent checks the manual and operates equipment on its side.</p></div>
-    <div class="how-col"><span class="how-step">03</span>${icon("hand")}<h3>COMMIT</h3><p>Confirm the instruction, then press, cut or transmit before time runs out.</p></div>`;
+    <div class="how-col"><span class="how-step">1</span>${icon("eye")}<h3>Look</h3><p>Read the colors, glyphs, gauges and sounds your agent cannot sense.</p></div>
+    <span class="how-arrow">→</span>
+    <div class="how-col"><span class="how-step">2</span>${icon("radio")}<h3>Call it out</h3><p>Your agent checks the manual and operates equipment on its side.</p></div>
+    <span class="how-arrow">→</span>
+    <div class="how-col"><span class="how-step">3</span>${icon("hand")}<h3>Commit</h3><p>Confirm the instruction, then press, cut or transmit before time runs out.</p></div>`;
   wrap.appendChild(how);
 
   const foot = el("footer", "menu-foot");
   foot.innerHTML = `Built on <a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noreferrer">WebMCP</a>
     · <a href="https://github.com/morcoan/crosstalk" target="_blank" rel="noreferrer">Source</a>
+    · <span title="Barlow Condensed, B612 and Caveat — OFL 1.1">Typeface credits</span>
     · All modules run locally — no accounts, no servers.`;
   wrap.appendChild(foot);
 
@@ -132,16 +148,18 @@ function renderBriefing(root: HTMLElement): void {
   }
   const wrap = el("div", "screen briefing");
   wrap.innerHTML = `
+    <div class="folder-back"><span>${missionPresentation[m.id].file}</span></div>
     <div class="brief-docket">
-      <div class="brief-kicker">FIELD ASSIGNMENT · ${missionPresentation[m.id].threat}</div>
+      <span class="paper-clip brief-clip"></span><span class="brief-tape"></span>
+      <div class="brief-kicker">FIELD ASSIGNMENT · ${missionPresentation[m.id].threat} · ${missionPresentation[m.id].file}</div>
       <div class="brief-heading"><div class="brief-insignia">${icon(missionPresentation[m.id].icon)}</div>
         <div><h2 class="brief-name">${m.codename}</h2><div class="brief-meta">${m.modules.length} MODULE${m.modules.length === 1 ? "" : "S"} · FUSE ${fmtClock(m.seconds * 1000)} · 3 STRIKES</div></div></div>
       <p class="brief-text">${m.brief}</p>
       <div class="brief-modules">${m.modules.map((kind) => `<span>${kind.replace("signal", "signal tx").toUpperCase()}</span>`).join("")}</div>
     </div>
     <div class="brief-roles">
-      <div>${icon("eye")}<span><b>YOUR ROLE</b>Describe what you see and hear. Perform the physical actions.</span></div>
-      <div>${icon("wrench")}<span><b>AGENT ROLE</b>Read the manual, scan the device and operate remote servos.</span></div>
+      <div class="human-note">${icon("eye")}<span><b>YOUR SIDE</b>Describe what you see and hear. Perform the physical actions.</span></div>
+      <div class="agent-note">${icon("wrench")}<span><b>AGENT SIDE</b>Read the manual, scan the device and operate remote servos.</span></div>
     </div>`;
   const tip = el(
     "div",
@@ -188,8 +206,12 @@ function renderDebrief(root: HTMLElement): void {
   }
   const win = d.result === "disarmed";
   const wrap = el("div", `screen debrief ${win ? "is-win" : "is-loss"}`);
-  wrap.innerHTML = `
-    <div class="debrief-stamp">${icon(win ? "shield" : "wire")}<span>${win ? "MISSION COMPLETE" : "MISSION FAILED"}</span></div>
+  const board = el("div", "debrief-board");
+  board.innerHTML = `<span class="board-pencil"></span><span class="board-clip clip-left"></span><span class="board-clip clip-right"></span>`;
+  const sheet = el("article", "debrief-sheet");
+  sheet.innerHTML = `
+    <div class="report-number">AFTER-ACTION REPORT / ${d.serial}</div>
+    <div class="debrief-stamp">${icon(win ? "shield" : "wire")}<span>${win ? "CLEARED" : "FAILED"}</span></div>
     <div class="debrief-banner">${win ? "DEVICE DISARMED" : "DEVICE DETONATED"}</div>
     <div class="debrief-sub">${d.mission.codename} · SERIAL ${d.serial}</div>
     <div class="debrief-stats">
@@ -198,6 +220,8 @@ function renderDebrief(root: HTMLElement): void {
       <div class="stat"><span>${d.toolCalls}</span><label>team radio calls</label></div>
       <div class="stat stat-rating"><span>${rating(d)}</span><label>field grade</label></div>
     </div>`;
+  board.appendChild(sheet);
+  wrap.appendChild(board);
 
   const coaching = el("section", "coaching");
   coaching.innerHTML = `<div>${icon("radio")}<span><h3>REVIEW THE RUN TOGETHER</h3>
@@ -218,14 +242,14 @@ function renderDebrief(root: HTMLElement): void {
     coachingActions.prepend(nextBtn);
   }
   coaching.appendChild(coachingActions);
-  wrap.appendChild(coaching);
+  sheet.appendChild(coaching);
 
   // FIELD SKILLS — the impact thesis, demonstrated: name what the player just practiced.
   const skills = el("section", "skills");
   skills.innerHTML = `<h3>SKILLS PRACTICED</h3>${skillLines(d, win)
     .map((s) => `<div class="skill-row"><span class="skill-medal">✓</span><span class="skill-name">${s[0]}</span><span class="skill-note">${s[1]}</span></div>`)
     .join("")}`;
-  wrap.appendChild(skills);
+  sheet.appendChild(skills);
 
   // Declarative WebMCP tool: a plain HTML form annotated with toolname/tooldescription.
   // While this screen is mounted, agents see a `file_field_report` tool.
@@ -288,7 +312,7 @@ function renderDebrief(root: HTMLElement): void {
   };
   paintLog();
   reportWrap.append(form, logEl);
-  wrap.appendChild(reportWrap);
+  sheet.appendChild(reportWrap);
 
   const row = el("div", "brief-actions");
   const again = el("button", "btn btn-arm", "RE-ARM SAME MISSION");
@@ -296,7 +320,7 @@ function renderDebrief(root: HTMLElement): void {
   const menu = el("button", "btn btn-ghost", "← MISSION SELECT");
   menu.addEventListener("click", () => backToMenu());
   row.append(menu, again);
-  wrap.appendChild(row);
+  sheet.appendChild(row);
   root.appendChild(wrap);
 
   // Console/tools hint after a loss

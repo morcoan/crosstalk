@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="CROSSTALK — one human, one agent, one bomb" width="100%">
+  <img src="docs/banner.svg" alt="CROSSTALK — a handcrafted field workbench for one human and one agent" width="100%">
 </p>
 
 <h1 align="center">CROSSTALK</h1>
@@ -30,11 +30,16 @@ Neither of you can defuse the bomb alone. **The game is the conversation.**
 
 ## 🎛 Built to read like equipment, not a dashboard
 
-Version 1.3 gives the whole experience one physical visual language: stamped field cards, enamel
-controls, an instrument-clock timer, module ownership plates and a TEAM RADIO panel that promotes
-the latest event. The mission rules did not change; the interface now explains them sooner and with
-less text. The menu teaches **observe → communicate → commit**, each briefing states who can do what,
-and every live module names the next callout before exposing its controls.
+Version 1.4 rebuilds the whole experience as a hand-assembled field workbench rather than a stack of
+software panels. The menu is a desk scene made from taped placards, a pinned agent note, a punch card
+and three visibly different case folders. Briefings arrive as clipped paper dockets; live modules sit
+inside one scarred equipment chassis; TEAM RADIO is a field transceiver that prints its newest event
+onto a receipt. The mission rules did not change. The interface explains them through recognizable
+objects, material contrast and spatial composition instead of generic cards and badges.
+
+The visual system uses original code-drawn paper, blueprint and bench textures plus three bundled
+OFL type families—Barlow Condensed, B612 and Caveat—with full attribution in
+[`CREDITS.md`](CREDITS.md). It makes no font, image or telemetry request at runtime.
 
 The pass is grounded in player-motivation, game-feel and accessibility research, with the decisions
 and source links recorded in [`docs/UX_RESEARCH.md`](docs/UX_RESEARCH.md). It is desktop-first but
@@ -217,7 +222,7 @@ NATIVE WEBMCP VERIFICATION PASSED
 npm install
 npm run dev      # vite dev server
 npm test         # rule/manual invariants (vitest)
-npm run build    # type-check + bundle (~25 KB gzipped, zero runtime deps)
+npm run build    # type-check + bundle (~38 KB gzipped, zero runtime deps)
 npm run smoke    # full co-op playthrough, stubbed WebMCP (playwright)
 npm run native   # verification against Chromium's native WebMCP
 npm run ux       # desktop/mobile interaction and accessibility assertions
@@ -241,7 +246,8 @@ src/
 
 ## 📜 License
 
-[MIT](LICENSE) — build on it, remix it, teach with it.
+[MIT](LICENSE) — build on it, remix it, teach with it. Bundled typeface licenses are listed in
+[`CREDITS.md`](CREDITS.md).
 
 ---
 

@@ -18,5 +18,10 @@ export function renderManualPanel(body: HTMLElement): void {
   print.addEventListener("click", () => window.print());
   const pre = el("pre", "manual-text");
   pre.innerHTML = esc(fullManual());
-  body.append(note, print, pre);
+  const credits = el(
+    "details",
+    "manual-credits",
+    `<summary>MAKER'S MARKS / TYPEFACE CREDITS</summary><p>Barlow Condensed by The Barlow Project Authors, B612 by Airbus, and Caveat by Pablo Impallari and contributors. Bundled locally under the SIL Open Font License 1.1. Original workbench illustrations by the CROSSTALK project.</p>`
+  );
+  body.append(note, print, pre, credits);
 }

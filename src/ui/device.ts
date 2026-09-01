@@ -20,6 +20,7 @@ export function renderDevice(root: HTMLElement): void {
   if (!d) return;
 
   const wrap = el("div", "screen active-screen");
+  wrap.innerHTML = `<div class="bench-shadow device-shadow" aria-hidden="true"></div>`;
 
   /* -------- top bar -------- */
   const top = el("div", "devbar");
@@ -37,12 +38,19 @@ export function renderDevice(root: HTMLElement): void {
 
   /* -------- device + feed layout -------- */
   const layout = el("div", "dev-layout");
+  const chassis = el("section", `device-chassis chassis-mods-${d.modules.length}`);
+  chassis.innerHTML = `<div class="chassis-stencil">CT–${d.mission.id.toUpperCase()} / DO NOT OPEN</div>
+    <span class="chassis-handle handle-left"></span><span class="chassis-handle handle-right"></span>
+    <span class="chassis-cable cable-a"></span><span class="chassis-cable cable-b"></span>
+    <span class="chassis-rivet rivet-a"></span><span class="chassis-rivet rivet-b"></span>
+    <span class="chassis-rivet rivet-c"></span><span class="chassis-rivet rivet-d"></span>`;
   const grid = el("div", `module-grid mods-${d.modules.length}`);
   const bodies = new Map<GameModule, HTMLElement>();
   const cards = new Map<GameModule, HTMLElement>();
 
   d.modules.forEach((mod) => {
-    const card = el("div", "module-card");
+    const card = el("div", `module-card module-${mod.kind}`);
+    card.dataset.material = mod.kind;
     const head = el("div", "module-head");
     head.innerHTML = `<span class="module-label">${mod.label}</span><span class="module-status"><span class="module-status-text">ARMED</span><span class="module-led"></span></span>`;
     const roles = el("div", "module-roles");
@@ -56,10 +64,13 @@ export function renderDevice(root: HTMLElement): void {
     cards.set(mod, card);
     mod.render(body);
   });
-  layout.appendChild(grid);
+  chassis.appendChild(grid);
+  layout.appendChild(chassis);
 
   const side = el("aside", "feedpane");
-  side.innerHTML = `<div class="feed-head">${icon("radio")}<span>TEAM RADIO<small>Agent equipment and device events</small></span></div>`;
+  side.innerHTML = `<div class="radio-shell"><span class="radio-antenna"></span><span class="radio-dial"></span>
+    <div class="radio-grille">${"<i></i>".repeat(18)}</div><div class="feed-head">${icon("radio")}<span>TEAM RADIO<small>FIELD TRANSCEIVER / RX–24</small></span></div></div>
+    <div class="printer-slot"><span>PAPER FEED</span></div>`;
   const feedLatest = el("div", "feed-latest");
   const feedHistory = document.createElement("details");
   feedHistory.className = "feed-history";

@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 
 const DIST = new URL("../dist/", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".ttf": "font/ttf" };
 const server = createServer(async (req, res) => {
   const path = req.url === "/" ? "/index.html" : (req.url ?? "/").split("?")[0];
   try {

@@ -5,7 +5,10 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 
 const DIST = new URL("../dist/", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
+const MIME = {
+  ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
+  ".svg": "image/svg+xml", ".ttf": "font/ttf", ".png": "image/png", ".gif": "image/gif"
+};
 const server = createServer(async (req, res) => {
   const path = req.url === "/" ? "/index.html" : (req.url ?? "/").split("?")[0];
   try {
@@ -58,7 +61,14 @@ async function smallestVisibleTarget(page, selector) {
 try {
   const desktop = await boot({ width: 1440, height: 1000 });
   check(await desktop.page.locator(".mission-card").count() === 3, "three missions remain plainly selectable");
+  check(await desktop.page.locator(".menu-top > .hero + .linkcard").count() === 1, "desk composition separates the field placard from the pinned agent note");
+  check(await desktop.page.locator(".mission-card[data-material]").count() === 3, "each mission is filed as a distinct physical material");
   check(await desktop.page.locator(".how-col").count() === 3, "observe / communicate / commit onboarding is present");
+  const fonts = await desktop.page.evaluate(async () => {
+    await document.fonts.ready;
+    return ["B612", "Barlow Condensed", "Caveat"].every((name) => document.fonts.check(`12px "${name}"`));
+  });
+  check(fonts, "all three bundled OFL typeface families load locally");
   check((await overflow(desktop.page)) <= 1, "desktop has no horizontal overflow");
   check((await smallestVisibleTarget(desktop.page, "button")) >= 42, "desktop controls meet the 42px pointer-target floor");
 
@@ -69,6 +79,8 @@ try {
   check(await desktop.page.locator(".brief-roles > div").count() === 2, "briefing separates human and agent ownership");
   await desktop.page.locator(".btn-arm").click();
   await desktop.page.waitForSelector(".wire-bay");
+  check(await desktop.page.locator(".device-chassis").count() === 1, "modules share one physical equipment chassis");
+  check(await desktop.page.locator(".radio-shell + .printer-slot").count() === 1, "team radio prints through a visible paper-feed slot");
   check(await desktop.page.locator(".module-instruction").count() === 1, "live module exposes a single next-action cue");
   check(await desktop.page.locator(".feed-latest").count() === 1, "team radio promotes the latest event");
   check((await smallestVisibleTarget(desktop.page, ".wire")) >= 42, "physical wire controls remain easy to hit");

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="500" viewBox="0 0 1440 500" role="img" aria-labelledby="title desc">
+  <title id="title">CROSSTALK field workbench</title>
+  <desc id="desc">A hand-illustrated desk with a taped CROSSTALK placard, case folders, wires and a field radio.</desc>
+  <defs>
+    <pattern id="grain" width="72" height="72" patternUnits="userSpaceOnUse">
+      <path d="M0 17c21-7 44 5 72-2M0 49c30 8 43-9 72-3" fill="none" stroke="#73543a" stroke-opacity=".22" stroke-width="2"/>
+      <path d="M13 0v72M51 0v72" stroke="#140f0b" stroke-opacity=".08"/>
+    </pattern>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0v28" fill="none" stroke="#d8e7df" stroke-opacity=".23"/>
+    </pattern>
+  </defs>
+  <rect width="1440" height="500" fill="#30251b"/>
+  <rect width="1440" height="500" fill="url(#grain)"/>
+  <path d="M0 446c175-48 309 18 486-23s325 35 486-8 300 11 468-27" fill="none" stroke="#17110d" stroke-opacity=".45" stroke-width="8"/>
+
+  <g transform="translate(62 86) rotate(-2)">
+    <rect x="8" y="10" width="672" height="318" fill="#100c08" opacity=".45"/>
+    <rect width="672" height="318" fill="#eadbb9" stroke="#9a875e" stroke-width="2"/>
+    <path d="M56 0v318M0 65h672" stroke="#4c3520" stroke-opacity=".08"/>
+    <g fill="#c9b377" opacity=".82">
+      <path d="M80-14h112v30H80z" transform="rotate(-5 136 1)"/>
+      <path d="M492-8h105v28H492z" transform="rotate(6 545 6)"/>
+    </g>
+    <text x="50" y="64" fill="#67271f" font-family="Arial Narrow, sans-serif" font-size="18" font-weight="700" letter-spacing="3">FIELD COMMUNICATION EXERCISE / ISSUE 04</text>
+    <text x="48" y="186" fill="#29251d" font-family="Arial Black, sans-serif" font-size="104" font-weight="900" letter-spacing="-7">CROSS<tspan fill="#a43b31">TALK</tspan></text>
+    <text x="52" y="240" fill="#29251d" font-family="Arial Narrow, sans-serif" font-size="34" font-weight="700">YOU SEE IT. YOUR AGENT KNOWS IT. TALK FAST.</text>
+    <text x="52" y="282" fill="#5f5849" font-family="Arial, sans-serif" font-size="17">ONE DEVICE / TWO SENSES / ONE SHARED DECISION</text>
+  </g>
+
+  <g transform="translate(795 78)">
+    <path d="M0 49h138V12h210v37h191v302H0z" fill="#b89e65" stroke="#6f5a35" stroke-width="3" transform="rotate(1 270 180)"/>
+    <path d="M35 32h120V0h198v32h148v300H35z" fill="#355867" stroke="#1b333e" stroke-width="3" transform="rotate(-2 270 170)"/>
+    <path d="M35 32h120V0h198v32h148v300H35z" fill="url(#grid)" transform="rotate(-2 270 170)"/>
+    <text x="72" y="91" fill="#e9dfc6" font-family="Arial Narrow, sans-serif" font-size="18" font-weight="700" letter-spacing="3">CASE / 17B</text>
+    <text x="68" y="171" fill="#f1e5c7" font-family="Arial Black, sans-serif" font-size="48" font-weight="900">CROSSED WIRES</text>
+    <path d="M69 205h360M69 235h262M69 265h390" stroke="#b7d0cb" stroke-opacity=".55" stroke-width="3"/>
+    <g transform="translate(355 286) rotate(-7)">
+      <rect width="150" height="54" fill="#a43b31" stroke="#67271f" stroke-width="3"/>
+      <text x="75" y="35" text-anchor="middle" fill="#fff4da" font-family="Arial Narrow, sans-serif" font-size="18" font-weight="700" letter-spacing="2">START HERE</text>
+    </g>
+  </g>
+
+  <g transform="translate(1218 320)">
+    <rect x="-4" y="-56" width="162" height="153" rx="5" fill="#141814" opacity=".45"/>
+    <rect width="150" height="90" rx="4" fill="#465149" stroke="#151a17" stroke-width="5"/>
+    <circle cx="26" cy="28" r="13" fill="#85897c" stroke="#222722" stroke-width="5"/>
+    <g fill="#1f2521">
+      <rect x="70" y="18" width="11" height="4"/><rect x="88" y="18" width="11" height="4"/><rect x="106" y="18" width="11" height="4"/>
+      <rect x="70" y="29" width="11" height="4"/><rect x="88" y="29" width="11" height="4"/><rect x="106" y="29" width="11" height="4"/>
+    </g>
+    <text x="20" y="69" fill="#d69a34" font-family="Arial Narrow, sans-serif" font-size="17" font-weight="700">TEAM RADIO</text>
+    <path d="M127 0l13-100" stroke="#181b18" stroke-width="8" stroke-linecap="round"/>
+    <rect x="10" y="90" width="130" height="74" fill="#eee2c2"/>
+    <path d="M22 111h92M22 127h72M22 143h98" stroke="#655b47" stroke-opacity=".6" stroke-width="3"/>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-width="12">
+    <path d="M0 365c55-28 86 34 142 6" stroke="#812e27"/>
+    <path d="M0 405c68-29 102 39 172 4" stroke="#2f687f"/>
+    <path d="M0 443c48-20 99 32 151 15" stroke="#b68c2e"/>
+  </g>
+  <text x="1100" y="459" fill="#e7d6b2" font-family="cursive" font-size="24" opacity=".62" transform="rotate(-3 1100 459)">keep the line open →</text>
+</svg>
