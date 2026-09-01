@@ -2,9 +2,10 @@
 
 The recorded cut is designed to show the product claim, not merely describe it: an agent reads a persistent local operator dossier, recommends and starts a mission, collaborates through sensory and actuation boundaries, then returns an evidence-bounded coaching focus.
 
-The v1.4 picture pass uses the final handcrafted workbench UI throughout: taped paper placards,
-three distinct case folders, a clipped briefing docket, the shared device chassis, explicit
-human/agent role notes and a field transceiver that prints the latest TEAM RADIO event.
+The v1.4.2 picture pass uses the final tactile-thriller workbench UI throughout: taped paper placards,
+three diagrammed case folders, an ordered preflight docket, the shared device chassis with module
+wayfinding, distinct instrument housings, and a field transceiver that prints the latest TEAM RADIO
+event.
 
 ## Storyboard
 

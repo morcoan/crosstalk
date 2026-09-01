@@ -5,7 +5,7 @@ import { loadTrainingRecord, recommendMission, trainingTotals } from "../game/tr
 import { webmcpHealth } from "../webmcp/context";
 import { disposeDeviceUi, renderDevice } from "./device";
 import { resetHudForScreenTransition, toggleDrawer } from "./hud";
-import { icon, missionPresentation } from "./presentation";
+import { icon, missionDiagram, missionPresentation } from "./presentation";
 
 export const AGENT_PROMPT =
   "You are my defusal expert in CROSSTALK. Use your WebMCP tools: start with get_briefing and " +
@@ -55,11 +55,17 @@ export function renderScreen(root: HTMLElement): void {
     recovery.appendChild(recover);
     root.replaceChildren(recovery);
   }
-  window.scrollTo(0, 0);
+  resetScreenScroll();
   requestAnimationFrame(() => {
-    window.scrollTo(0, 0);
+    resetScreenScroll();
     root.querySelector<HTMLElement>("[data-screen-title]")?.focus({ preventScroll: true });
   });
+}
+
+function resetScreenScroll(): void {
+  // Direct assignments are immediate even when the authored page uses smooth anchor scrolling.
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 }
 
 /* ------------------------------ MENU ------------------------------ */
@@ -146,21 +152,56 @@ function renderMenu(root: HTMLElement): void {
     <div class="dossier-next"><span>RECOMMENDED</span><b>${recommended.codename}</b></div>`;
   wrap.appendChild(dossier);
 
-  const stackLabel = el("div", "mission-stack-label", `<span>CHOOSE A CASE FILE</span><i>Pull one. Brief together. Then arm.</i>`);
+  const stackLabel = el("div", "mission-stack-label", `<span id="mission-tray-title">CHOOSE A CASE FILE</span><i>Pull one. Brief together. Then arm.</i>`);
   wrap.appendChild(stackLabel);
 
-  const grid = el("section", "mission-grid");
+  const tray = el("section", "mission-tray");
+  tray.setAttribute("aria-labelledby", "mission-tray-title");
+  const trayControls = el("div", "mission-tray-controls");
+  trayControls.setAttribute("role", "group");
+  trayControls.setAttribute("aria-label", "Browse mission case files");
+  const trayPrev = el("button", "mission-tray-nav mission-tray-prev", "← PREVIOUS");
+  trayPrev.type = "button";
+  trayPrev.setAttribute("aria-controls", "mission-tray-viewport");
+  const trayPosition = el("span", "mission-tray-position", `01 / ${String(MISSIONS.length).padStart(2, "0")}`);
+  trayPosition.setAttribute("aria-hidden", "true");
+  const trayNext = el("button", "mission-tray-nav mission-tray-next", "NEXT →");
+  trayNext.type = "button";
+  trayNext.setAttribute("aria-controls", "mission-tray-viewport");
+  trayControls.append(trayPrev, trayPosition, trayNext);
+
+  const trayViewport = el("div", "mission-tray-viewport");
+  trayViewport.id = "mission-tray-viewport";
+  trayViewport.tabIndex = 0;
+  trayViewport.setAttribute("role", "region");
+  trayViewport.setAttribute("aria-roledescription", "carousel");
+  trayViewport.setAttribute("aria-label", "Mission case file carousel");
+  const trayStatus = el("span", "mission-tray-status sr-only");
+  trayStatus.setAttribute("role", "status");
+  trayStatus.setAttribute("aria-live", "polite");
+  trayStatus.setAttribute("aria-atomic", "true");
+
+  const grid = el("div", "mission-grid");
+  const missionCards: HTMLButtonElement[] = [];
   MISSIONS.forEach((m, i) => {
     const best = bestFor(m.id);
     const art = missionPresentation[m.id];
     const isRecommended = recommended.id === m.id;
     const card = el("button", `mission-card mission-${m.id}${isRecommended ? " is-recommended" : ""}`);
+    card.id = `mission-card-${m.id}`;
+    card.type = "button";
+    card.dataset.missionId = m.id;
     card.dataset.material = art.material;
+    card.setAttribute(
+      "aria-label",
+      `Mission ${i + 1} of ${MISSIONS.length}: open ${m.codename} briefing. ${m.modules.length} module${m.modules.length === 1 ? "" : "s"}, ${fmtClock(m.seconds * 1000)} fuse${isRecommended ? ". Recommended next drill" : ""}.`
+    );
     card.innerHTML = `
       <span class="folder-tab">${art.file}</span><span class="folder-fastener"></span>
       ${isRecommended ? '<div class="mission-ribbon">START HERE</div>' : ""}
       <div class="mission-top"><span class="mission-index">${String(i + 1).padStart(2, "0")}</span>
         <span class="mission-threat">${art.threat}</span></div>
+      ${missionDiagram(m.id)}
       <div class="mission-insignia">${icon(art.icon)}</div>
       <div class="mission-name">${m.codename}</div>
       <div class="mission-flavor">${art.flavor}</div>
@@ -170,8 +211,59 @@ function renderMenu(root: HTMLElement): void {
       <div class="mission-cta">OPEN BRIEFING <span>→</span></div>`;
     card.addEventListener("click", () => goToBriefing(m.id));
     grid.appendChild(card);
+    missionCards.push(card);
   });
-  wrap.appendChild(grid);
+  trayViewport.appendChild(grid);
+  tray.append(trayControls, trayViewport, trayStatus);
+  wrap.appendChild(tray);
+
+  let trayIndex = 0;
+  const missionLeft = (card: HTMLButtonElement): number =>
+    card.getBoundingClientRect().left - trayViewport.getBoundingClientRect().left + trayViewport.scrollLeft;
+  const nearestMissionIndex = (): number => {
+    const viewportCenter = trayViewport.scrollLeft + trayViewport.clientWidth / 2;
+    let nearest = 0;
+    let distance = Number.POSITIVE_INFINITY;
+    missionCards.forEach((card, index) => {
+      const center = missionLeft(card) + card.offsetWidth / 2;
+      const nextDistance = Math.abs(center - viewportCenter);
+      if (nextDistance < distance) {
+        nearest = index;
+        distance = nextDistance;
+      }
+    });
+    return nearest;
+  };
+  const updateTrayControls = (index = nearestMissionIndex(), announce = false): void => {
+    const canScroll = trayViewport.scrollWidth > trayViewport.clientWidth + 4;
+    trayIndex = canScroll ? index : 0;
+    trayPrev.disabled = !canScroll || trayIndex === 0;
+    trayNext.disabled = !canScroll || trayIndex === missionCards.length - 1;
+    trayPosition.textContent = `${String(trayIndex + 1).padStart(2, "0")} / ${String(missionCards.length).padStart(2, "0")}`;
+    if (announce) {
+      const mission = MISSIONS[trayIndex];
+      trayStatus.textContent = `${mission.codename}, mission ${trayIndex + 1} of ${MISSIONS.length}${mission.id === recommended.id ? ", recommended next drill" : ""}.`;
+    }
+  };
+  const moveTray = (direction: -1 | 1): void => {
+    const nextIndex = Math.max(0, Math.min(missionCards.length - 1, trayIndex + direction));
+    const card = missionCards[nextIndex];
+    const left = missionLeft(card) - Math.max(0, (trayViewport.clientWidth - card.offsetWidth) / 2);
+    trayViewport.scrollTo({
+      left: Math.max(0, left),
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"
+    });
+    updateTrayControls(nextIndex, true);
+  };
+  trayPrev.addEventListener("click", () => moveTray(-1));
+  trayNext.addEventListener("click", () => moveTray(1));
+  let trayPaintTimer = 0;
+  trayViewport.addEventListener("scroll", () => {
+    window.clearTimeout(trayPaintTimer);
+    trayPaintTimer = window.setTimeout(() => {
+      if (trayViewport.isConnected) updateTrayControls();
+    }, 90);
+  }, { passive: true });
 
   const how = el("section", "howto");
   how.innerHTML = `
@@ -190,6 +282,9 @@ function renderMenu(root: HTMLElement): void {
   wrap.appendChild(foot);
 
   root.appendChild(wrap);
+  requestAnimationFrame(() => {
+    if (trayViewport.isConnected) updateTrayControls();
+  });
 }
 
 /* ---------------------------- BRIEFING ---------------------------- */
@@ -211,10 +306,14 @@ function renderBriefing(root: HTMLElement): void {
       <p class="brief-text">${m.brief}</p>
       <div class="brief-modules">${m.modules.map((kind) => `<span>${kind.replace("signal", "signal tx").toUpperCase()}</span>`).join("")}</div>
     </div>
-    <div class="brief-roles">
-      <div class="human-note">${icon("eye")}<span><b>YOUR SIDE</b>Describe what you see and hear. Perform the physical actions.</span></div>
-      <div class="agent-note">${icon("wrench")}<span><b>AGENT SIDE</b>Read the manual, scan the device and operate remote servos.</span></div>
-    </div>`;
+    <section class="brief-preflight" aria-labelledby="brief-preflight-title">
+      <div class="brief-preflight-head"><span class="brief-preflight-kicker">PRE-FLIGHT / THREE-PART HANDOFF</span><h2 id="brief-preflight-title">Confirm the line before the clock starts</h2></div>
+      <ol class="brief-roles preflight-strip" aria-label="Preflight order: you, agent, then arm">
+        <li class="preflight-step preflight-you"><span class="preflight-number" aria-hidden="true">01</span>${icon("eye")}<span class="preflight-copy"><b>YOU / OBSERVE</b>Read the colors, glyphs, gauges and sounds. You perform the physical actions.</span><span class="preflight-arrow" aria-hidden="true">→</span></li>
+        <li class="preflight-step preflight-agent"><span class="preflight-number" aria-hidden="true">02</span>${icon("wrench")}<span class="preflight-copy"><b>AGENT / PREPARE</b>Open the required manual sections, scan machine-readable data and confirm the handoff.</span><span class="preflight-arrow" aria-hidden="true">→</span></li>
+        <li class="preflight-step preflight-arm"><span class="preflight-number" aria-hidden="true">03</span>${icon("hand")}<span class="preflight-copy"><b>ARM / COMMIT</b>Start the clock only when both sides are ready. Confirm irreversible actions before touching the device.</span></li>
+      </ol>
+    </section>`;
   const tip = el("div", "brief-tip");
   tip.setAttribute("role", "status");
   tip.setAttribute("aria-atomic", "true");
@@ -296,23 +395,31 @@ function renderDebrief(root: HTMLElement): void {
   board.innerHTML = `<span class="board-pencil"></span><span class="board-clip clip-left"></span><span class="board-clip clip-right"></span>`;
   const sheet = el("article", "debrief-sheet");
   sheet.innerHTML = `
-    <div class="report-number">AFTER-ACTION REPORT / ${d.serial}</div>
-    <div class="debrief-stamp">${icon(win ? "shield" : "wire")}<span>${win ? "CLEARED" : "FAILED"}</span></div>
-    <h1 class="debrief-banner" data-screen-title tabindex="-1">${win ? "DEVICE DISARMED" : "DEVICE DETONATED"}</h1>
-    <div class="debrief-sub">${d.mission.codename} · SERIAL ${d.serial}</div>
-    <div class="debrief-stats">
-      <div class="stat"><span>${win ? fmtClock(d.msLeft) : "00:00"}</span><small>time left</small></div>
-      <div class="stat"><span>${d.strikes}/3</span><small>strikes</small></div>
-      <div class="stat"><span>${d.toolCalls}</span><small>team radio calls</small></div>
-      <div class="stat stat-rating"><span>${rating(d)}</span><small>field grade</small></div>
-    </div>`;
+    <section class="debrief-result-group" aria-labelledby="debrief-result-title">
+      <div class="debrief-group-label">01 / RESULT</div>
+      <div class="report-number">AFTER-ACTION REPORT / ${d.serial}</div>
+      <div class="debrief-result-heading">
+        <div class="debrief-result-copy"><h1 id="debrief-result-title" class="debrief-banner" data-screen-title tabindex="-1">${win ? "DEVICE DISARMED" : "DEVICE DETONATED"}</h1>
+          <div class="debrief-sub">${d.mission.codename} · SERIAL ${d.serial}</div></div>
+        <div class="debrief-stamp">${icon(win ? "shield" : "wire")}<span>${win ? "CLEARED" : "FAILED"}</span></div>
+      </div>
+      <div class="debrief-stats" aria-label="Mission result summary">
+        <div class="stat"><span>${win ? fmtClock(d.msLeft) : "00:00"}</span><small>time left</small></div>
+        <div class="stat"><span>${d.strikes}/3</span><small>strikes</small></div>
+        <div class="stat"><span>${d.toolCalls}</span><small>team radio calls</small></div>
+        <div class="stat stat-rating debrief-grade"><span>${rating(d)}</span><small>field grade</small></div>
+      </div>
+    </section>`;
   board.appendChild(sheet);
   wrap.appendChild(board);
 
-  const coaching = el("section", "coaching");
-  coaching.innerHTML = `<div>${icon("radio")}<span><h2>REVIEW THE RUN TOGETHER</h2>
+  const coaching = el("section", "coaching debrief-next-action");
+  coaching.setAttribute("aria-labelledby", "debrief-next-action-title");
+  coaching.innerHTML = `<div>${icon("radio")}<span><small class="debrief-action-kicker">02 / NEXT ACTION</small><h2 id="debrief-next-action-title">REVIEW THE RUN TOGETHER</h2>
     <p>Ask your agent for one strength, one improvement and the best next drill. The review uses device events only—not your private conversation.</p></span></div>`;
-  const coachingActions = el("div", "coaching-actions");
+  const coachingActions = el("footer", "coaching-actions");
+  coachingActions.setAttribute("role", "group");
+  coachingActions.setAttribute("aria-label", "Review and continue");
   const reviewBtn = el("button", "btn btn-primary", "COPY REVIEW REQUEST");
   reviewBtn.addEventListener("click", () => {
     void copyText(REVIEW_PROMPT).then((ok) => {
@@ -332,9 +439,11 @@ function renderDebrief(root: HTMLElement): void {
 
   // FIELD SKILLS — the impact thesis, demonstrated: name what the player just practiced.
   const skills = el("section", "skills");
-  skills.innerHTML = `<h2>SKILLS PRACTICED</h2>${skillLines(d, win)
-    .map((s) => `<div class="skill-row"><span class="skill-medal">✓</span><span class="skill-name">${s[0]}</span><span class="skill-note">${s[1]}</span></div>`)
-    .join("")}`;
+  skills.setAttribute("aria-labelledby", "skills-practiced-title");
+  skills.innerHTML = `<div class="skills-heading"><span class="skills-stamp-mark" aria-hidden="true"><b>FIELD</b><span>VERIFIED</span></span><div><small class="skills-kicker">TRAINING LEDGER / OBSERVED</small><h2 id="skills-practiced-title">SKILLS PRACTICED</h2></div></div>
+    <div class="skill-stamp-grid" role="list">${skillLines(d, win)
+      .map((s) => `<div class="skill-row skill-stamp" role="listitem"><span class="skill-medal" aria-hidden="true">✓</span><span class="skill-name">${s[0]}</span><span class="skill-note">${s[1]}</span></div>`)
+      .join("")}</div>`;
   sheet.appendChild(skills);
 
   // Declarative WebMCP tool: a plain HTML form annotated with toolname/tooldescription.
@@ -412,7 +521,9 @@ function renderDebrief(root: HTMLElement): void {
   reportWrap.append(form, logEl);
   sheet.appendChild(reportWrap);
 
-  const row = el("div", "brief-actions");
+  const row = el("div", "brief-actions debrief-actions debrief-redeploy");
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", "Redeploy or return to mission select");
   const again = el("button", "btn btn-arm", "RE-ARM SAME MISSION");
   again.addEventListener("click", () => goToBriefing(d.mission.id));
   const menu = el("button", "btn btn-ghost", "← MISSION SELECT");

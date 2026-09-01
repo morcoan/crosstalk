@@ -53,13 +53,15 @@ await page.screenshot({ path: "scripts/shots/mission3.png", fullPage: true });
 // manual drawer
 await page.click('[data-role="btn-manual"]');
 await page.waitForSelector(".manual-text");
+await page.waitForTimeout(250);
 await page.screenshot({ path: "scripts/shots/manual.png" });
 await page.click(".drawer-head button");
 
 // console drawer
 await page.click('[data-role="btn-console"]');
 await page.waitForSelector(".console-tool");
-await page.click(".console-tool:nth-child(4)");
+await page.click('.console-tool[data-tool-name="consult_manual"]');
+await page.waitForTimeout(250);
 await page.screenshot({ path: "scripts/shots/console.png" });
 await page.click(".drawer-head button");
 

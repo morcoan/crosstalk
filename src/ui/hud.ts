@@ -160,19 +160,21 @@ export function toggleDrawer(kind: "manual" | "console", trigger?: HTMLElement):
   openDrawer = kind;
   drawerTrigger = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
   drawerHost.innerHTML = "";
-  const panel = el("aside", "drawer");
+  const panel = el("aside", `drawer drawer-${kind}`);
   panel.id = DRAWER_ID;
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-labelledby", DRAWER_TITLE_ID);
   const head = el("div", "drawer-head");
-  head.innerHTML = `<span class="drawer-tab" id="${DRAWER_TITLE_ID}">${kind === "manual" ? "FIELD MANUAL / RING BINDER" : "AGENT KIT / TOOL ROLL"}</span>`;
-  const close = el("button", "hud-btn", "CLOSE ×");
+  head.innerHTML = `<span class="drawer-latch" aria-hidden="true"></span>
+    <span class="drawer-identity"><small>${kind === "manual" ? "ISSUED TECHNICAL COPY" : "LOCAL WEBMCP CONSOLE"}</small>
+      <span class="drawer-tab" id="${DRAWER_TITLE_ID}">${kind === "manual" ? "FIELD MANUAL / RING BINDER" : "AGENT KIT / TOOL ROLL"}</span></span>`;
+  const close = el("button", "hud-btn drawer-close", "CLOSE ×");
   close.setAttribute("aria-label", `Close ${kind === "manual" ? "field manual" : "Agent Kit"}`);
   close.addEventListener("click", () => closeDrawer());
   head.appendChild(close);
   panel.appendChild(head);
-  const body = el("div", "drawer-body");
+  const body = el("div", `drawer-body drawer-body-${kind}`);
   panel.appendChild(body);
   drawerHost.appendChild(panel);
 

@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./polish.css";
 import { on } from "./lib/bus";
 import { installWebMcp } from "./webmcp/tools";
 import { mountHud } from "./ui/hud";

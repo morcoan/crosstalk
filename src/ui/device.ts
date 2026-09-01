@@ -40,6 +40,28 @@ export function renderDevice(root: HTMLElement): void {
     <div class="dev-strike-bank"><span>STRIKES</span><div class="dev-strikes" data-role="strikes" role="img"></div></div>`;
   wrap.appendChild(top);
 
+  /* -------- module wayfinding + compact radio -------- */
+  const moduleNav = el("nav", "module-status-nav");
+  moduleNav.setAttribute("aria-label", "Device module status and navigation");
+  moduleNav.dataset.role = "module-navigation";
+  moduleNav.style.setProperty("--module-count", String(d.modules.length));
+  const moduleNavLabel = el("span", "module-status-nav-label", "MODULES");
+  moduleNavLabel.setAttribute("aria-hidden", "true");
+  const moduleNavList = el("div", "module-status-nav-list");
+  moduleNav.append(moduleNavLabel, moduleNavList);
+
+  const radioTicker = el("div", "team-radio-ticker");
+  radioTicker.dataset.role = "team-radio-ticker";
+  // The authoritative announcement remains the existing liveStatus region.
+  radioTicker.setAttribute("aria-hidden", "true");
+  const tickerLabel = el("span", "team-radio-ticker-label", "TEAM RADIO");
+  const tickerClock = el("span", "team-radio-ticker-clock", "--:--");
+  tickerClock.dataset.role = "team-radio-ticker-clock";
+  const tickerMessage = el("span", "team-radio-ticker-message", "Radio quiet. Brief your agent and begin the handoff.");
+  tickerMessage.dataset.role = "team-radio-ticker-message";
+  radioTicker.append(tickerLabel, tickerClock, tickerMessage);
+  top.append(moduleNav, radioTicker);
+
   /* -------- device + feed layout -------- */
   const layout = el("div", "dev-layout");
   const chassis = el("section", `device-chassis chassis-mods-${d.modules.length}`);
@@ -52,13 +74,21 @@ export function renderDevice(root: HTMLElement): void {
   const grid = el("div", `module-grid mods-${d.modules.length}`);
   const bodies = new Map<GameModule, HTMLElement>();
   const cards = new Map<GameModule, HTMLElement>();
+  const moduleJumps = new Map<GameModule, HTMLButtonElement>();
 
   d.modules.forEach((mod, index) => {
+    const moduleAnchorId = `device-module-${d.mission.id}-${index + 1}-${mod.kind}`;
     const titleId = `module-${mod.kind}-${index}-title`;
     const instructionId = `module-${mod.kind}-${index}-instruction`;
     const card = el("section", `module-card module-${mod.kind}`);
+    card.id = moduleAnchorId;
+    card.tabIndex = -1;
     card.setAttribute("aria-labelledby", titleId);
     card.setAttribute("aria-describedby", instructionId);
+    card.dataset.role = "device-module";
+    card.dataset.kind = mod.kind;
+    card.dataset.status = mod.status;
+    card.dataset.moduleIndex = String(index + 1);
     card.dataset.material = mod.kind;
     const head = el("div", "module-head");
     head.innerHTML = `<h2 class="module-label" id="${titleId}">${mod.label}</h2><span class="module-status"><span class="module-status-text">ARMED</span><span class="module-led" aria-hidden="true"></span></span>`;
@@ -73,6 +103,24 @@ export function renderDevice(root: HTMLElement): void {
     bodies.set(mod, body);
     cards.set(mod, card);
     mod.render(body);
+
+    const jump = document.createElement("button");
+    jump.type = "button";
+    jump.className = "module-status-jump";
+    jump.dataset.role = "module-navigation-control";
+    jump.dataset.kind = mod.kind;
+    jump.dataset.status = mod.status;
+    jump.dataset.moduleIndex = String(index + 1);
+    jump.setAttribute("aria-controls", moduleAnchorId);
+    jump.innerHTML = `<span class="module-status-jump-index" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span><span class="module-status-jump-label">${esc(mod.label)}</span><span class="module-status-jump-state">ARMED</span>`;
+    jump.setAttribute("aria-label", `${mod.label}: armed. Jump to module.`);
+    jump.addEventListener("click", () => {
+      const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+      card.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      card.focus({ preventScroll: true });
+    });
+    moduleNavList.appendChild(jump);
+    moduleJumps.set(mod, jump);
   });
   chassis.appendChild(grid);
   layout.appendChild(chassis);
@@ -113,8 +161,17 @@ export function renderDevice(root: HTMLElement): void {
     d.modules.forEach((mod) => {
       const card = cards.get(mod);
       card?.classList.toggle("is-solved", mod.status === "solved");
+      if (card) card.dataset.status = mod.status;
       const status = card?.querySelector<HTMLElement>(".module-status-text");
       if (status) status.textContent = mod.status === "solved" ? "CLEARED ✓" : "ARMED";
+      const jump = moduleJumps.get(mod);
+      if (jump) {
+        const solved = mod.status === "solved";
+        jump.classList.toggle("is-solved", solved);
+        jump.dataset.status = mod.status;
+        jump.querySelector<HTMLElement>(".module-status-jump-state")!.textContent = solved ? "CLEARED ✓" : "ARMED";
+        jump.setAttribute("aria-label", `${mod.label}: ${solved ? "cleared" : "armed"}. Jump to module.`);
+      }
     });
   };
 
@@ -133,6 +190,9 @@ export function renderDevice(root: HTMLElement): void {
     feedLatest.innerHTML = latest
       ? `<span class="feed-clock">${latest.clock}</span><b>${esc(latest.text)}</b>`
       : `<span>Radio quiet. Brief your agent and begin the handoff.</span>`;
+    radioTicker.className = `team-radio-ticker${latest ? ` tone-${latest.tone}` : ""}`;
+    tickerClock.textContent = latest?.clock ?? "--:--";
+    tickerMessage.textContent = latest?.text ?? "Radio quiet. Brief your agent and begin the handoff.";
     feedList.innerHTML = entries
       .slice(-60)
       .map((f) => `<div class="feed-row tone-${f.tone}"><span class="feed-clock">${f.clock}</span>${esc(f.text)}</div>`)

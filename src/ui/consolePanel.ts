@@ -25,13 +25,18 @@ export function renderConsolePanel(body: HTMLElement): () => void {
   status.setAttribute("aria-atomic", "true");
   body.appendChild(status);
 
+  const deck = el("div", "console-deck");
+  const inventory = el("section", "console-inventory");
+  const inventoryHead = el("div", "console-section-head", "TOOL INVENTORY");
+
   const list = el("div", "console-list");
   list.setAttribute("aria-label", "Live CROSSTALK tools");
-  body.appendChild(list);
+  inventory.append(inventoryHead, list);
 
+  const workbench = el("section", "console-workbench");
+  const workbenchHead = el("div", "console-section-head", "SELECTED TOOL / TEST BENCH");
   const runBox = el("section", "console-run");
   runBox.setAttribute("aria-label", "Selected tool controls");
-  body.appendChild(runBox);
 
   const receipt = el("section", "console-receipt");
   receipt.innerHTML = `<h3>LAST INVOCATION RECEIPT</h3>`;
@@ -40,7 +45,9 @@ export function renderConsolePanel(body: HTMLElement): () => void {
   receiptOut.setAttribute("aria-live", "polite");
   receiptOut.setAttribute("aria-atomic", "true");
   receipt.appendChild(receiptOut);
-  body.appendChild(receipt);
+  workbench.append(workbenchHead, runBox, receipt);
+  deck.append(inventory, workbench);
+  body.appendChild(deck);
 
   let selected: ToolSpec | null = null;
   let listedSignature = "";
@@ -124,13 +131,13 @@ export function renderConsolePanel(body: HTMLElement): () => void {
     const selectedName = selected?.name ?? null;
     if (selected) selected = tools.find((tool) => tool.name === selected!.name) ?? null;
     list.innerHTML = "";
-    list.appendChild(
-      el("div", "console-count", `${tools.length} LIVE TOOL${tools.length === 1 ? "" : "S"} — INVENTORY CHANGES WITH THE DEVICE`)
-    );
-    tools.forEach((spec) => {
+    list.appendChild(el("div", "console-count", `${tools.length} LIVE TOOL${tools.length === 1 ? "" : "S"} — SET CHANGES WITH DEVICE STATE`));
+    if (!selected && tools.length > 0) selected = tools[0];
+    const addTool = (spec: ToolSpec, index: number): void => {
       const item = el("button", "console-tool");
       item.dataset.toolName = spec.name;
       item.setAttribute("aria-pressed", "false");
+      item.style.setProperty("--tool-index", String(index + 1));
       const name = el("span", "tool-name", spec.name);
       const kind = el("span", spec.readOnly ? "tool-ro" : "tool-rw", spec.readOnly ? "read-only" : "actuator");
       const description = el(
@@ -145,9 +152,19 @@ export function renderConsolePanel(body: HTMLElement): () => void {
         paintRun();
       });
       list.appendChild(item);
-    });
+    };
+    const reads = tools.filter((tool) => tool.readOnly);
+    const actions = tools.filter((tool) => !tool.readOnly);
+    if (reads.length) {
+      list.appendChild(el("div", "console-group-label", `SENSOR + MANUAL / ${reads.length}`));
+      reads.forEach(addTool);
+    }
+    if (actions.length) {
+      list.appendChild(el("div", "console-group-label is-action", `REMOTE ACTUATION / ${actions.length}`));
+      actions.forEach((tool, index) => addTool(tool, reads.length + index));
+    }
     paintSelection();
-    if (selectedName && !selected) paintRun();
+    if (selectedName !== selected?.name) paintRun();
     if (focusedName) {
       [...list.querySelectorAll<HTMLButtonElement>(".console-tool")]
         .find((item) => item.dataset.toolName === focusedName)

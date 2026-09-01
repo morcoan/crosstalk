@@ -41,6 +41,13 @@ Version 1.4.1 keeps those rules and materials intact while hardening the fuse ag
 pauses and stale callbacks, making WebMCP registration retry and recover truthfully, validating local
 records, and tightening keyboard, modal, reflow, contrast and cross-browser behavior.
 
+Version 1.4.2 is the tactile-thriller finish: mission folders carry authored circuit, handoff and
+waveform diagrams; the briefing is a three-part preflight; the live chassis gains module wayfinding
+and a compact radio ticker; each instrument has its own fabricated housing; and the Manual and Agent
+Kit open as a readable ring binder and two-pane tool roll. On phones, the case files become an
+accessible snap tray instead of a several-screen stack. Mission logic and WebMCP contracts remain
+unchanged.
+
 The visual system uses original code-drawn paper, blueprint and bench textures plus three bundled
 OFL type families—Barlow Condensed, B612 and Caveat—with full attribution in
 [`CREDITS.md`](CREDITS.md). It makes no font, image or telemetry request at runtime.
@@ -209,8 +216,9 @@ Six release gates, all runnable from this repo:
    `registerTool` schema validation, native `getTools()`/`executeTool()` driving a full mission win,
    `toolchange` events on module solves, and the declarative debrief form appearing as a native tool.
 5. **`npm run ux`** — checks the playable hierarchy and interaction path at 1440px, 390px and 320px:
-   Axe scans, modal focus/return, keyboard continuity, schema-driven controls, explicit role ownership,
-   live next-action feedback, minimum control sizes, exact reflow, reduced motion and forced colors.
+   Axe scans, opaque modal surfaces, focus trapping/return, keyboard continuity, the accessible mission
+   tray, module wayfinding, radio mirroring, armed-to-solved state, schema-driven controls, minimum
+   control sizes, exact reflow, reduced motion and forced colors.
 6. **`npm run xbrowser`** — serves the built artifact on an ephemeral loopback port and verifies the
    no-agent path in Firefox and WebKit, failing on page, console, request or HTTP errors.
 

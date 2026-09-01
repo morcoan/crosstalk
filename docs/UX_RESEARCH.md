@@ -1,4 +1,4 @@
-# CROSSTALK v1.4 — UX, game-feel and handcrafted-art rationale
+# CROSSTALK v1.4.2 — UX, game-feel and handcrafted-art rationale
 
 This pass deliberately preserved the mission rules. It changes how quickly a new player can form a
 mental model, how clearly the game communicates ownership and state, and how much feedback each
@@ -93,3 +93,18 @@ Sources: [WCAG 2.2 Target Size (Minimum)](https://www.w3.org/WAI/WCAG22/Understa
 `npm run ux` is a repeatable Playwright gate for the assertions above. It complements the gameplay
 tests: `npm test`, `npm run smoke` and `npm run native` prove rules and tool behavior; the UX gate
 proves the critical interaction remains understandable and usable across the supported layouts.
+
+## v1.4.2 tactile-thriller refinement
+
+The follow-up keeps the research-backed hierarchy but removes the remaining repeated panel rhythm.
+Each mission now carries a diagram tied to its cooperation pattern; the briefing is presented as an
+ordered preflight; live modules expose persistent wayfinding and distinct instrument housings; and
+the two technical drawers behave like different pieces of issued equipment. On mobile, a keyboard-
+operable snap tray keeps every case file available without forcing players through three full-height
+cards before they can review the play loop.
+
+The new presentation remains semantic rather than ornamental: the module strip mirrors real
+armed/cleared state, the compact radio ticker mirrors the authoritative feed without duplicating its
+live announcement, and solved modules stay mounted to avoid focus and layout jumps. The expanded UX
+gate verifies those contracts at desktop, 390px and 320px alongside Axe, forced colors, reduced
+motion, exact overflow, touch targets and modal focus containment.
